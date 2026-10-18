@@ -366,6 +366,12 @@ PLATFORM_PATTERNS = ["yoga", "workout", "exercise", "gym", "meditation", "breath
                      "help me"]
 
 
+EMOTION_WORDS = ["feel", "feeling", "felt", "i am", "i'm", "sad", "anxious", "stressed", "scared",
+                 "angry", "lonely", "depressed", "crying", "cry", "upset", "worried", "afraid",
+                 "bad", "awful", "terrible", "hurt", "pain", "lost", "confused", "overwhelmed",
+                 "tired of"]
+
+
 def classify_message(message: str) -> str:
     """Returns: 'simple', 'platform', 'crisis', 'agent'"""
     msg = message.lower().strip()
@@ -377,6 +383,10 @@ def classify_message(message: str) -> str:
     # Simple greetings - no API call needed
     if msg in SIMPLE_PATTERNS or msg.replace("!", "").strip() in SIMPLE_PATTERNS:
         return "simple"
+
+    # Feelings always win over platform keywords, so emotional messages reach the agent
+    if any(w in msg for w in EMOTION_WORDS):
+        return "agent"
 
     # Platform info - lightweight canned responses
     if any(w in msg for w in PLATFORM_PATTERNS):
