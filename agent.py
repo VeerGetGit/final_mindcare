@@ -163,6 +163,12 @@ def book_therapy_session(therapist_name: str, timeslot: str, concern: str, user_
     timeslot examples: 'Today 3PM', 'Today 5PM', 'Tomorrow 10AM', 'Tomorrow 2PM', 'Tomorrow 4PM'."""
     try:
         db = _require_db()
+        # Only one active booking per user per slot
+        existing = db.collection('session_bookings').where('user_id', '==', user_id) \
+            .where('timeslot', '==', timeslot).stream()
+        if any((d.to_dict() or {}).get('status') != 'cancelled' for d in existing):
+            return 'You already have a booking for this time slot. Please choose a different time.'
+
         therapist_id, resolved_name = 'any', therapist_name
         for d in db.collection('therapists').stream():
             t = d.to_dict() or {}
@@ -171,16 +177,11 @@ def book_therapy_session(therapist_name: str, timeslot: str, concern: str, user_
                 break
         if therapist_id == 'any':
             resolved_name = 'First Available'
-        now = _now()
         db.collection('session_bookings').add({
-            'user_id': user_id, 'therapist_name': resolved_name, 'therapist_id': therapist_id,
-            'timeslot': timeslot, 'notes': concern, 'timestamp': now,
-            'status': 'pending', 'booked_via': 'chatbot'})
-        db.collection('therapist_cases').add({
-            'therapist_id': therapist_id, 'therapist_name': resolved_name,
-            **_patient_identity(user_id),
-            'type': 'chatbot_booking', 'source': 'chatbot', 'booked_via': 'chatbot',
-            'timeslot': timeslot, 'problem': concern, 'status': 'new', 'timestamp': now})
+            'user_id': user_id, **_patient_identity(user_id),
+            'therapist_name': resolved_name, 'therapist_id': therapist_id,
+            'timeslot': timeslot, 'notes': concern, 'timestamp': _now(),
+            'status': 'pending', 'booked_via': 'chatbot', 'notify_therapist': True})
         return f'Session booked with {resolved_name} for {timeslot}. The therapist will confirm shortly.'
     except Exception as e:
         return f'Booking failed: {e}'
@@ -205,13 +206,10 @@ def flag_crisis_message(user_id: str, message: str) -> str:
     """Flag a message showing crisis or self-harm risk so a therapist is notified immediately."""
     try:
         db = _require_db()
-        now = _now()
-        db.collection('moderation_flags').add(
-            {'user_id': user_id, 'message': message, 'timestamp': now, 'type': 'crisis'})
         db.collection('therapist_cases').add({
             'therapist_id': 'any', **_patient_identity(user_id),
-            'type': 'chatbot_flag', 'source': 'chatbot',
-            'trigger_message': message, 'ai_response': '', 'status': 'urgent', 'timestamp': now})
+            'type': 'crisis', 'source': 'chatbot',
+            'trigger_message': message, 'ai_response': '', 'status': 'urgent', 'timestamp': _now()})
     except Exception as e:
         print(f'ERROR: flag_crisis_message failed: {e}')
     return 'CRISIS_FLAGGED'

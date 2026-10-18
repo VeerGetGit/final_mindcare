@@ -21,6 +21,7 @@ const db = getFirestore(app);
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let currentTherapistId = null;
+let currentTherapistName = "";
 let currentPatientId = null;
 let currentPatientData = null;
 let allSessions = [];
@@ -33,7 +34,8 @@ onAuthStateChanged(auth, async (user) => {
   const snap = await getDoc(doc(db, "therapists", user.uid));
   if (!snap.exists()) { await signOut(auth); window.location.href = "/therapist/login"; return; }
   currentTherapistId = user.uid;
-  document.getElementById("tp-therapist-name").textContent = snap.data().name || "Therapist";
+  currentTherapistName = snap.data().name || "Therapist";
+  document.getElementById("tp-therapist-name").textContent = currentTherapistName;
   await loadPatients();
   addAgentMessage("👋 Hello! I'm your AI session assistant. Click **+ Add** to add a patient, then tell me what you'd like to do.");
 });
@@ -453,17 +455,29 @@ function caseTime(c) {
   return t && t.toDate ? t.toDate() : (t ? new Date(t) : null);
 }
 
-async function fetchCases(type) {
-  // "any" = unassigned; any therapist can pick these up
+// Bookings (all sources) live in session_bookings; only crisis flags live in therapist_cases.
+async function fetchBookings() {
+  const queries = [
+    query(collection(db, "session_bookings"), where("therapist_id", "in", [currentTherapistId, "any"])),
+    query(collection(db, "session_bookings"), where("therapist_name", "==", currentTherapistName))
+  ];
+  const byId = new Map();
+  for (const q of queries) {
+    const snap = await getDocs(q);
+    snap.forEach(d => byId.set(d.id, { id: d.id, ...d.data() }));
+  }
+  return [...byId.values()].sort((a, b) => (caseTime(b) || 0) - (caseTime(a) || 0));
+}
+
+async function fetchCrisisCases() {
+  // "chatbot_flag" is the old type name; keep showing those existing cases
   const snap = await getDocs(query(
     collection(db, "therapist_cases"),
-    where("type", "in", type === "booking" ? ["booking", "chatbot_booking"] : [type]),
-    where("therapist_id", "in", [currentTherapistId, "any"])
+    where("type", "in", ["crisis", "chatbot_flag"])
   ));
   const cases = [];
   snap.forEach(d => cases.push({ id: d.id, ...d.data() }));
-  cases.sort((a, b) => (caseTime(b) || 0) - (caseTime(a) || 0));
-  return cases;
+  return cases.sort((a, b) => (caseTime(b) || 0) - (caseTime(a) || 0));
 }
 
 async function loadCases() {
@@ -471,8 +485,8 @@ async function loadCases() {
   const alertsEl = document.getElementById("cases-alerts");
   bookingsEl.textContent = alertsEl.textContent = "Loading...";
   try {
-    renderCases(bookingsEl, await fetchCases("booking"), "booking");
-    renderCases(alertsEl, await fetchCases("chatbot_flag"), "chatbot_flag");
+    renderCases(bookingsEl, await fetchBookings(), "booking");
+    renderCases(alertsEl, await fetchCrisisCases(), "crisis");
   } catch (e) {
     console.error("Error loading cases:", e);
     bookingsEl.textContent = alertsEl.textContent = "Error loading cases.";
@@ -489,27 +503,34 @@ function addLine(parent, label, text) {
   parent.appendChild(row);
 }
 
+function setStatusBadge(badge, status) {
+  badge.className = "tp-status-badge " + status;
+  badge.textContent = status;
+}
+
 function renderCases(container, cases, type) {
   container.textContent = "";
   if (!cases.length) {
-    container.textContent = type === "booking" ? "No session bookings yet." : "No chatbot alerts.";
+    container.textContent = type === "booking" ? "No session bookings yet." : "No crisis alerts.";
     return;
   }
+  const isBooking = type === "booking";
+  const collectionName = isBooking ? "session_bookings" : "therapist_cases";
+
   cases.forEach(c => {
     const card = document.createElement("div");
     card.className = "tp-case-card";
 
-    const status = c.status || "new";
     const badge = document.createElement("span");
-    badge.className = "tp-status-badge " + status;
-    badge.textContent = status;
+    setStatusBadge(badge, c.status || (isBooking ? "pending" : "urgent"));
     card.appendChild(badge);
 
+    const patientId = c.patient_id || c.patient_uid || c.user_id;
     const identity = document.createElement("div");
     identity.className = "tp-case-identity";
     addLine(identity, "Patient", c.patient_name || "Anonymous");
     addLine(identity, "Email", c.patient_email || "No email");
-    addLine(identity, "Patient ID", c.patient_id || c.patient_uid);
+    addLine(identity, "Patient ID", patientId);
     card.appendChild(identity);
 
     const when = caseTime(c);
@@ -520,45 +541,49 @@ function renderCases(container, cases, type) {
       card.appendChild(meta);
     }
 
-    if (type === "booking") {
+    if (isBooking) {
       addLine(card, "Time slot", c.timeslot);
-      addLine(card, "Problem", c.problem);
+      addLine(card, "Problem", c.notes || c.problem);
+      addLine(card, "Booked via", c.booked_via === "chatbot" ? "📱 Chatbot" : "🖥️ Dashboard");
     } else {
       addLine(card, "Triggering message", c.trigger_message);
-      addLine(card, "AI responded", c.ai_response);
     }
 
     const actions = document.createElement("div");
     actions.className = "tp-case-actions";
+
+    // Confirm (bookings) / Mark Handled (crisis alerts)
+    const doneStatus = isBooking ? "confirmed" : "resolved";
+    const isOpen = isBooking ? (c.status || "pending") === "pending" : c.status !== "resolved";
+    if (isOpen) {
+      const actionBtn = document.createElement("button");
+      actionBtn.className = "tp-btn tp-btn-primary";
+      actionBtn.textContent = isBooking ? "Confirm" : "Mark Handled";
+      actionBtn.addEventListener("click", async () => {
+        try {
+          await updateDoc(doc(db, collectionName, c.id), { status: doneStatus });
+          setStatusBadge(badge, doneStatus);
+          actionBtn.remove();
+        } catch (e) {
+          showToast("Error: " + e.message, "error");
+        }
+      });
+      actions.appendChild(actionBtn);
+    }
+
     const histBtn = document.createElement("button");
     histBtn.className = "tp-btn tp-btn-outline";
     histBtn.textContent = "View Chat History";
     histBtn.addEventListener("click", () => showChatHistory(c));
     actions.appendChild(histBtn);
 
-    if (type === "chatbot_flag" && (status === "new" || status === "urgent")) {
-      const reviewBtn = document.createElement("button");
-      reviewBtn.className = "tp-btn tp-btn-primary";
-      reviewBtn.textContent = "Mark Reviewed";
-      reviewBtn.addEventListener("click", async () => {
-        try {
-          await updateDoc(doc(db, "therapist_cases", c.id), { status: "reviewed" });
-          badge.className = "tp-status-badge reviewed";
-          badge.textContent = "reviewed";
-          reviewBtn.remove();
-        } catch (e) {
-          showToast("Error: " + e.message, "error");
-        }
-      });
-      actions.appendChild(reviewBtn);
-    }
     card.appendChild(actions);
     container.appendChild(card);
   });
 }
 
 async function showChatHistory(c) {
-  const patientId = c.patient_id || c.patient_uid;
+  const patientId = c.patient_id || c.patient_uid || c.user_id;
   const modal = document.getElementById("chat-history-modal");
   const body = document.getElementById("chat-history-body");
   modal.style.display = "flex";

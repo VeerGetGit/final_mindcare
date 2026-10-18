@@ -289,3 +289,5 @@ body {
 #chat-history-body { max-height: 60vh; overflow-y: auto; }
 .tp-chat-history-text { white-space: pre-wrap; font-size: 14px; line-height: 1.5; }
 .tp-status-badge.urgent { background: var(--danger); color: #fff; }
+.tp-status-badge.pending { background: rgba(243,156,18,0.12); color: #B7770D; }
+.tp-status-badge.confirmed, .tp-status-badge.resolved { background: rgba(39,174,96,0.12); color: #1E8449; }

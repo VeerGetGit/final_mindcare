@@ -2159,11 +2159,15 @@ function containsCrisisWord(message) {
 
 async function flagCrisisMessage(uid, message) {
   try {
-    await addDoc(collection(db, 'moderation_flags'), {
-      user_id: uid,
-      message,
-      timestamp: serverTimestamp(),
-      type: 'crisis'
+    const user = auth.currentUser;
+    await addDoc(collection(db, 'therapist_cases'), {
+      therapist_id: 'any',
+      ...(user ? patientIdentity(user) : { patient_id: uid, patient_uid: uid, patient_name: 'Anonymous', patient_email: 'No email' }),
+      type: 'crisis',
+      source: 'peer_chat',
+      trigger_message: message,
+      status: 'urgent',
+      timestamp: new Date()
     });
   } catch (error) {
     console.error('Error flagging crisis message:', error);
@@ -2414,31 +2418,30 @@ async function submitBooking(event) {
   const submitBtn = document.getElementById('booking-submit');
   submitBtn.disabled = true;
   try {
+    // Only one active booking per user per slot
+    const existing = await getDocs(query(
+      collection(db, 'session_bookings'),
+      where('user_id', '==', user.uid),
+      where('timeslot', '==', timeslot)
+    ));
+    if (existing.docs.some((d) => d.data().status !== 'cancelled')) {
+      alert('You already have a booking for this time slot. Please choose a different time.');
+      return;
+    }
+
+    // session_bookings is the single record therapists read (see "My Cases" in the portal)
     await addDoc(collection(db, 'session_bookings'), {
       user_id: user.uid,
+      ...patientIdentity(user),
       therapist_name: selectedTherapist.id === 'any' ? 'First Available' : selectedTherapist.name,
       therapist_id: selectedTherapist.id,
       timeslot,
       notes,
       timestamp: new Date(),
-      status: 'pending'
+      status: 'pending',
+      booked_via: 'dashboard',
+      notify_therapist: true
     });
-    try {
-      const caseRef = await addDoc(collection(db, 'therapist_cases'), {
-        therapist_id: selectedTherapist.id,
-        therapist_name: selectedTherapist.id === 'any' ? 'First Available' : selectedTherapist.name,
-        ...patientIdentity(user),
-        type: 'booking',
-        source: 'manual_booking',
-        timeslot,
-        problem: notes,
-        status: 'new',
-        timestamp: new Date()
-      });
-      await attachChatHistory(caseRef, user.uid);
-    } catch (error) {
-      console.error('Error creating therapist case:', error);
-    }
     document.getElementById('booking-form').reset();
     document.getElementById('booking-form').style.display = 'none';
     document.getElementById('booking-success').style.display = 'block';
@@ -2461,48 +2464,18 @@ function patientIdentity(user) {
   };
 }
 
-// Last 20 chat_messages for a patient, formatted oldest-first for the therapist.
-async function fetchChatHistory(uid) {
-  try {
-    const snap = await getDocs(query(collection(db, 'chat_messages'), where('user_id', '==', uid)));
-    const msgs = [];
-    snap.forEach((d) => msgs.push(d.data()));
-    const time = (m) => (m.timestamp && m.timestamp.toDate ? m.timestamp.toDate() : new Date(m.timestamp || 0));
-    const last = msgs.sort((a, b) => time(a) - time(b)).slice(-20);
-    const lines = last.map((m) => `[${time(m).toLocaleString()}] ${m.role === 'user' ? 'Patient' : 'Bot'}: ${m.text || ''}`);
-    return { text: `Chat History (last 20 messages):\n${lines.join('\n')}`, count: last.length };
-  } catch (error) {
-    console.error('Error fetching chat history:', error);
-    return { text: '', count: 0 };
-  }
-}
-
-async function attachChatHistory(caseRef, uid) {
-  const history = await fetchChatHistory(uid);
-  try {
-    await updateDoc(caseRef, {
-      chat_history: history.count ? history.text : '',
-      chat_message_count: history.count,
-      chat_history_fetched_at: new Date()
-    });
-  } catch (error) {
-    console.error('Error attaching chat history:', error);
-  }
-}
-
 async function createChatbotFlagCase(user, triggerMessage, aiResponse) {
   try {
-    const caseRef = await addDoc(collection(db, 'therapist_cases'), {
+    await addDoc(collection(db, 'therapist_cases'), {
       therapist_id: 'any',
       ...patientIdentity(user),
-      type: 'chatbot_flag',
+      type: 'crisis',
       source: 'chatbot',
       trigger_message: triggerMessage,
       ai_response: aiResponse,
-      status: 'new',
+      status: 'urgent',
       timestamp: new Date()
     });
-    await attachChatHistory(caseRef, user.uid);
   } catch (error) {
     console.error('Error creating chatbot flag case:', error);
   }
