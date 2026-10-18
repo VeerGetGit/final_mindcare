@@ -17,7 +17,9 @@ import {
   orderBy,
   query,
   limit,
-  Timestamp
+  Timestamp,
+  addDoc,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
 import { getDatabase, ref as dbRef, push, get, onChildAdded } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
@@ -1974,6 +1976,16 @@ sendChat.addEventListener('click', () => {
   console.log('Sending message:', message); // Debug log
 
   if (message) {
+    if (containsBadWord(message)) {
+      alert('Your message contains inappropriate language.');
+      return;
+    }
+    if (containsCrisisWord(message)) {
+      const uid = auth.currentUser ? auth.currentUser.uid : 'anonymous';
+      flagCrisisMessage(uid, message);
+      showCrisisPopup();
+    }
+
     const todayKey = getFormattedDate(new Date());
     const messageData = {
       message,
@@ -2086,3 +2098,209 @@ function showCenteredNotification(message, type = 'warning') {
   }, 5000);
 }
 
+
+
+// ── Peer chat content filter ─────────────────────────────────────
+
+function stripLookalikes(text) {
+  // Decompose accents (é → e), drop combining marks and zero-width characters,
+  // fold fullwidth forms via NFKD, and map common Cyrillic/Greek look-alikes.
+  const map = { 'а': 'a', 'е': 'e', 'о': 'o', 'р': 'p', 'с': 'c', 'х': 'x', 'у': 'y', 'і': 'i', 'ѕ': 's', 'ο': 'o', 'α': 'a', 'ε': 'e', 'ι': 'i', 'υ': 'u' };
+  return text
+    .normalize('NFKD')
+    .replace(/[̀-ͯ​-‏⁠﻿]/g, '')
+    .replace(/[аеорсхуіѕοαειυ]/g, (c) => map[c] || c);
+}
+
+function normalizeLeet(text) {
+  return stripLookalikes(text.toLowerCase())
+    .replace(/@/g, 'a')
+    .replace(/3/g, 'e')
+    .replace(/1/g, 'i')
+    .replace(/0/g, 'o')
+    .replace(/\$/g, 's')
+    .replace(/5/g, 's')
+    .replace(/4/g, 'a')
+    .replace(/7/g, 't')
+    .replace(/\+/g, 't');
+}
+
+// Lowercase, de-leet, strip look-alikes and remove spaces
+function normalize(text) {
+  return normalizeLeet(text).replace(/\s+/g, '');
+}
+
+const BAD_WORD_PATTERNS = [
+  /f+u+c+k/, /b+i+t+c+h/, /a+s+s+h+o+l+e/, /s+h+i+t/, /bastard/, /harami/,
+  /behen\s*k[i1]/, /m[a@]darch[o0]d/, /ch[u0][t+]iya/, /r[a@]nd[i1]/, /g[a@]ndu/,
+  /lund/, /chutmarike/
+];
+// Short abbreviations need a word boundary, so they are checked with spaces kept.
+const BAD_WORD_BOUNDARY_PATTERNS = [/\bbc\b/, /\bmf\b/];
+
+function containsBadWord(message) {
+  const compact = normalize(message);
+  if (BAD_WORD_PATTERNS.some((re) => re.test(compact))) return true;
+  const spaced = normalizeLeet(message);
+  return BAD_WORD_BOUNDARY_PATTERNS.some((re) => re.test(spaced));
+}
+
+const CRISIS_PATTERNS = [
+  /suicide/, /kill\s*myself/, /want\s*to\s*die/, /end\s*my\s*life/, /self[\s-]*harm/,
+  /cut\s*myself/, /khatam/, /mar\s*jaunga/, /mar\s*jaungi/, /jeena\s*nahi/
+];
+
+function containsCrisisWord(message) {
+  const text = stripLookalikes(message.toLowerCase());
+  return CRISIS_PATTERNS.some((re) => re.test(text));
+}
+
+async function flagCrisisMessage(uid, message) {
+  try {
+    await addDoc(collection(db, 'moderation_flags'), {
+      user_id: uid,
+      message,
+      timestamp: serverTimestamp(),
+      type: 'crisis'
+    });
+  } catch (error) {
+    console.error('Error flagging crisis message:', error);
+  }
+}
+
+function showCrisisPopup() {
+  document.getElementById('crisis-popup').style.display = 'flex';
+}
+
+function closeCrisisPopup() {
+  document.getElementById('crisis-popup').style.display = 'none';
+}
+
+function connectToTherapist() {
+  closeCrisisPopup();
+  const card = document.getElementById('therapist-booking-card');
+  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  openBookingModal();
+}
+
+// ── Patient AI chatbot ───────────────────────────────────────────
+
+function toggleChatbot() {
+  const win = document.getElementById('chatbot-window');
+  const opening = win.style.display === 'none';
+  win.style.display = opening ? 'flex' : 'none';
+  if (opening) {
+    const messages = document.getElementById('chatbot-messages');
+    if (!messages.children.length) {
+      appendMessage('bot', "Hi, I'm MindCare. How are you feeling today?");
+    }
+    document.getElementById('chatbot-input').focus();
+  }
+}
+
+function appendMessage(sender, text) {
+  const messages = document.getElementById('chatbot-messages');
+  const div = document.createElement('div');
+  div.className = `chatbot-msg ${sender}`;
+  div.textContent = text;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chatbot-input');
+  const sendBtn = document.getElementById('chatbot-send');
+  const message = input.value.trim();
+  if (!message) return;
+
+  const user = auth.currentUser;
+  if (!user) {
+    appendMessage('bot', 'Please log in to chat.');
+    return;
+  }
+
+  appendMessage('user', message);
+  input.value = '';
+  sendBtn.disabled = true;
+
+  try {
+    const res = await fetch('/api/patient/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, user_id: user.uid })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Request failed');
+
+    appendMessage('bot', data.response);
+    if (data.flagged) {
+      document.getElementById('chatbot-banner').style.display = 'block';
+      // Server had no Firestore credentials; persist the review from the signed-in client.
+      if (data.review) {
+        try {
+          await addDoc(collection(db, 'pending_reviews'), { ...data.review, timestamp: serverTimestamp() });
+        } catch (error) {
+          console.error('Error saving pending review:', error);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Chatbot error:', error);
+    appendMessage('bot', "Sorry, I couldn't respond just now. Please try again.");
+  } finally {
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+// ── Therapist session booking ────────────────────────────────────
+
+function openBookingModal() {
+  document.getElementById('booking-form').style.display = 'block';
+  document.getElementById('booking-success').style.display = 'none';
+  document.getElementById('booking-modal').style.display = 'flex';
+}
+
+function closeBookingModal() {
+  document.getElementById('booking-modal').style.display = 'none';
+}
+
+async function submitBooking(event) {
+  if (event) event.preventDefault();
+  const user = auth.currentUser;
+  if (!user) {
+    alert('Please log in to book a session.');
+    return;
+  }
+
+  const timeslot = document.getElementById('booking-timeslot').value;
+  const notes = document.getElementById('booking-notes').value.trim();
+  if (!timeslot) return;
+
+  const submitBtn = document.getElementById('booking-submit');
+  submitBtn.disabled = true;
+  try {
+    await addDoc(collection(db, 'session_bookings'), {
+      user_id: user.uid,
+      timeslot,
+      notes,
+      timestamp: serverTimestamp(),
+      status: 'pending'
+    });
+    document.getElementById('booking-form').reset();
+    document.getElementById('booking-form').style.display = 'none';
+    document.getElementById('booking-success').style.display = 'block';
+  } catch (error) {
+    console.error('Error booking session:', error);
+    alert('Could not book the session. Please try again.');
+  } finally {
+    submitBtn.disabled = false;
+  }
+}
+
+// dashboard.js is an ES module; expose handlers used by inline onclick attributes
+Object.assign(window, {
+  toggleChatbot, sendChatMessage, appendMessage,
+  openBookingModal, closeBookingModal, submitBooking,
+  closeCrisisPopup, connectToTherapist
+});

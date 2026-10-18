@@ -5,6 +5,7 @@ from groq import Groq
 from dotenv import load_dotenv
 import json
 import os
+import re
 import datetime
 
 load_dotenv()
@@ -245,6 +246,84 @@ RESPONSE FORMAT:
     except Exception as e:
         print("❌ Agent error:", e)
         return jsonify({"error": str(e)}), 500
+
+# ── Patient AI Chatbot (human-in-the-loop) ──────────────────────
+
+CHAT_SYSTEM_PROMPT = ("You are MindCare, a supportive mental health companion. "
+                      "Give short, empathetic responses. Never diagnose. "
+                      "Encourage professional help when needed.")
+CHAT_MODEL = "llama3-8b-8192"
+CHAT_FLAG_REGEX = re.compile(
+    r"diagnose|disorder|medication|prescription|suicid|self-harm|\bkill|\bdie\b|hopeless|worthless",
+    re.IGNORECASE)
+CHAT_FLAGGED_REPLY = "I hear you. A care team member will follow up with you shortly."
+
+
+def _get_firestore():
+    """Firestore via Admin SDK, or None if no credentials are configured."""
+    try:
+        from firebase_admin import firestore
+        if not firebase_admin._apps:
+            cred_json = os.getenv('FIREBASE_CREDENTIALS_JSON')
+            if cred_json:
+                firebase_admin.initialize_app(credentials.Certificate(json.loads(cred_json)))
+            elif os.getenv('GOOGLE_APPLICATION_CREDENTIALS'):
+                firebase_admin.initialize_app()
+            else:
+                return None
+        return firestore.client()
+    except Exception as e:
+        print(f"❌ Firestore unavailable: {e}")
+        return None
+
+
+@app.route('/api/patient/chat', methods=['POST'])
+def patient_chat():
+    try:
+        data = request.get_json(silent=True) or {}
+        message = (data.get('message') or '').strip()
+        user_id = data.get('user_id') or 'anonymous'
+
+        if not message:
+            return jsonify({"error": "No message provided"}), 400
+
+        response = client.chat.completions.create(
+            model=CHAT_MODEL,
+            messages=[
+                {"role": "system", "content": CHAT_SYSTEM_PROMPT},
+                {"role": "user", "content": message}
+            ]
+        )
+        ai_response = response.choices[0].message.content.strip()
+
+        if not CHAT_FLAG_REGEX.search(ai_response):
+            return jsonify({"response": ai_response, "flagged": False})
+
+        review = {
+            "user_id": user_id,
+            "user_message": message,
+            "ai_response": ai_response,
+            "status": "pending",
+            "reviewed": False,
+        }
+        result = {"response": CHAT_FLAGGED_REPLY, "flagged": True, "saved": False}
+        fs = _get_firestore()
+        if fs is not None:
+            try:
+                from firebase_admin import firestore
+                fs.collection("pending_reviews").add({**review, "timestamp": firestore.SERVER_TIMESTAMP})
+                result["saved"] = True
+            except Exception as e:
+                print(f"❌ Failed to save pending review: {e}")
+        if not result["saved"]:
+            # No server credentials: let the signed-in client persist it instead.
+            result["review"] = review
+        return jsonify(result)
+
+    except Exception as e:
+        print(f"❌ Patient chat error: {e}")
+        return jsonify({"error": "Chat is unavailable right now."}), 500
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mood Dashboard</title>
     <link rel="stylesheet" href="/static/dashboard.css" />
+    <link rel="stylesheet" href="/static/chatbot.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.3.0/chart.umd.min.js"></script>
 </head>
 
@@ -105,6 +106,12 @@
                 <button id="next-week" title="Next Week">❯</button>
 
             </div>
+        </div>
+
+        <div class="dashboard-card" id="therapist-booking-card">
+            <h2>🩺 Talk to a Therapist</h2>
+            <p>Book a private session with a licensed mental health professional.</p>
+            <button id="open-booking-btn" class="mc-primary-btn" onclick="openBookingModal()">Book Session</button>
         </div>
 
         <div class="dashboard-card" id="ai-suggestions-card">
@@ -271,6 +278,58 @@
     </div>
 
     <div id="centered-notification-container"></div>
+
+    <!-- Therapist booking modal -->
+    <div id="booking-modal" class="mc-modal-backdrop" style="display:none;">
+        <div class="mc-modal">
+            <button class="mc-modal-close" onclick="closeBookingModal()" aria-label="Close">&times;</button>
+            <h2>Book a Session</h2>
+            <form id="booking-form" onsubmit="submitBooking(event)">
+                <label for="booking-timeslot">Select a time slot</label>
+                <select id="booking-timeslot" required>
+                    <option value="">Select a time slot</option>
+                    <option value="Today 3PM">Today 3PM</option>
+                    <option value="Today 5PM">Today 5PM</option>
+                    <option value="Tomorrow 10AM">Tomorrow 10AM</option>
+                    <option value="Tomorrow 2PM">Tomorrow 2PM</option>
+                    <option value="Tomorrow 4PM">Tomorrow 4PM</option>
+                </select>
+                <label for="booking-notes">What would you like to discuss? (optional)</label>
+                <textarea id="booking-notes" rows="4"></textarea>
+                <button type="submit" id="booking-submit" class="mc-primary-btn">Confirm Booking</button>
+            </form>
+            <div id="booking-success" class="mc-success" style="display:none;">
+                Session booked! Your therapist will confirm shortly.
+            </div>
+        </div>
+    </div>
+
+    <!-- Crisis support popup (peer chat filter) -->
+    <div id="crisis-popup" class="mc-modal-backdrop" style="display:none;">
+        <div class="mc-modal">
+            <button class="mc-modal-close" onclick="closeCrisisPopup()" aria-label="Close">&times;</button>
+            <p>We noticed your message. If you're struggling, please reach out to a counselor.</p>
+            <button class="mc-primary-btn" onclick="connectToTherapist()">Connect Now</button>
+        </div>
+    </div>
+
+    <!-- Patient AI chatbot widget -->
+    <button id="chatbot-toggle" class="chatbot-toggle" onclick="toggleChatbot()" aria-label="Open chat">💬</button>
+    <div id="chatbot-window" class="chatbot-window" style="display:none;">
+        <div class="chatbot-header">
+            <span>MindCare Assistant</span>
+            <button class="chatbot-close" onclick="toggleChatbot()" aria-label="Close chat">&times;</button>
+        </div>
+        <div id="chatbot-messages" class="chatbot-messages"></div>
+        <div id="chatbot-banner" class="chatbot-banner" style="display:none;">
+            Our care team has been notified and will reach out to you.
+        </div>
+        <div class="chatbot-input-row">
+            <input type="text" id="chatbot-input" placeholder="Type a message..."
+                onkeydown="if(event.key==='Enter')sendChatMessage()" />
+            <button id="chatbot-send" onclick="sendChatMessage()">Send</button>
+        </div>
+    </div>
 
     <script>
         const firebaseApiKey = "{{ api_key }}";
