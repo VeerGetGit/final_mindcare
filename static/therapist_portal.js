@@ -505,15 +505,20 @@ function renderCases(container, cases, type) {
     badge.textContent = status;
     card.appendChild(badge);
 
-    const name = document.createElement("h4");
-    name.textContent = c.patient_name || "Unknown patient";
-    card.appendChild(name);
+    const identity = document.createElement("div");
+    identity.className = "tp-case-identity";
+    addLine(identity, "Patient", c.patient_name || "Anonymous");
+    addLine(identity, "Email", c.patient_email || "No email");
+    addLine(identity, "Patient ID", c.patient_id || c.patient_uid);
+    card.appendChild(identity);
 
     const when = caseTime(c);
-    const meta = document.createElement("div");
-    meta.className = "tp-case-meta";
-    meta.textContent = [type === "booking" ? c.patient_email : null, when ? when.toLocaleString() : null].filter(Boolean).join(" • ");
-    card.appendChild(meta);
+    if (when) {
+      const meta = document.createElement("div");
+      meta.className = "tp-case-meta";
+      meta.textContent = when.toLocaleString();
+      card.appendChild(meta);
+    }
 
     if (type === "booking") {
       addLine(card, "Time slot", c.timeslot);
@@ -528,7 +533,7 @@ function renderCases(container, cases, type) {
     const histBtn = document.createElement("button");
     histBtn.className = "tp-btn tp-btn-outline";
     histBtn.textContent = "View Chat History";
-    histBtn.addEventListener("click", () => showChatHistory(c.patient_id));
+    histBtn.addEventListener("click", () => showChatHistory(c));
     actions.appendChild(histBtn);
 
     if (type === "chatbot_flag" && status === "new") {
@@ -552,11 +557,23 @@ function renderCases(container, cases, type) {
   });
 }
 
-async function showChatHistory(patientId) {
+async function showChatHistory(c) {
+  const patientId = c.patient_id || c.patient_uid;
   const modal = document.getElementById("chat-history-modal");
   const body = document.getElementById("chat-history-body");
-  body.textContent = "Loading...";
   modal.style.display = "flex";
+
+  // Snapshot attached to the case at booking/flag time; no API call needed
+  if (c.chat_history) {
+    body.textContent = "";
+    const pre = document.createElement("div");
+    pre.className = "tp-chat-history-text";
+    pre.textContent = c.chat_history;
+    body.appendChild(pre);
+    return;
+  }
+
+  body.textContent = "Loading...";
   try {
     let data;
     const res = await fetch("/api/patient/chat-summary/" + encodeURIComponent(patientId));

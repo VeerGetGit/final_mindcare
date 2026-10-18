@@ -325,6 +325,7 @@ def list_therapists():
                 "name": t.get("name", "Therapist"),
                 "specialization": t.get("specialization", ""),
                 "status": _therapist_status(t),
+                "email": t.get("email", ""),
             })
         return jsonify(therapists)
     except Exception:

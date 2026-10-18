@@ -283,3 +283,8 @@ body {
 .tp-status-badge.completed { background: rgba(39,174,96,0.12); color: #1E8449; }
 .tp-chat-line { margin: 6px 0; padding: 6px 10px; border-radius: 8px; background: #f4f1fa; font-size: 14px; }
 .tp-chat-line.bot { background: #eef6ff; }
+
+.tp-case-identity { margin-bottom: 8px; padding: 8px 10px; border-radius: 8px; background: var(--very-light-purple); }
+.tp-case-identity .tp-case-row { font-size: 15px; }
+#chat-history-body { max-height: 60vh; overflow-y: auto; }
+.tp-chat-history-text { white-space: pre-wrap; font-size: 14px; line-height: 1.5; }

@@ -19,6 +19,8 @@ import {
   limit,
   Timestamp,
   addDoc,
+  updateDoc,
+  where,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
@@ -2266,9 +2268,9 @@ let selectedTherapist = null; // { id, name }
 let therapistsCache = null;
 
 const STATUS_BADGES = {
-  available: { label: 'Available', cls: 'available' },
-  busy: { label: 'In Session', cls: 'busy' },
-  offline: { label: 'Not Available', cls: 'offline' }
+  available: { label: '✅ Available', cls: 'available' },
+  busy: { label: '🟡 In Session', cls: 'busy' },
+  offline: { label: '⭕ Not Available', cls: 'offline' }
 };
 
 // Therapist list comes from the backend (admin access); falls back to a direct Firestore read.
@@ -2307,7 +2309,7 @@ function normalizeStatus(status) {
   return STATUS_BADGES[s] ? s : 'available';
 }
 
-function buildTherapistCard(therapist, className, onClick) {
+function buildTherapistCard(therapist, className, onClick, showBadge = true) {
   const card = document.createElement('div');
   card.className = className;
   card.tabIndex = 0;
@@ -2323,6 +2325,12 @@ function buildTherapistCard(therapist, className, onClick) {
     spec.className = 'mc-therapist-spec';
     spec.textContent = therapist.specialization;
     card.appendChild(spec);
+  }
+
+  if (!showBadge) {
+    card.addEventListener('click', onClick);
+    card.addEventListener('keydown', (e) => { if (e.key === 'Enter') onClick(); });
+    return card;
   }
 
   const badgeEl = document.createElement('span');
@@ -2353,16 +2361,17 @@ async function renderBookingTherapists() {
   const therapists = await fetchTherapists();
   listEl.textContent = '';
 
-  therapists.forEach((t) => {
-    listEl.appendChild(buildTherapistCard(t, 'mc-therapist-card', () => selectTherapist(t)));
-  });
-
   const anyone = { id: 'any', name: 'First Available' };
   listEl.appendChild(buildTherapistCard(
-    { ...anyone, name: 'First Available Counselor', specialization: 'Booked with whoever is free', badgeClass: 'available', badgeLabel: 'Always Available' },
+    { ...anyone, name: '🟢 First Available Counselor', specialization: 'Booked with whoever is free', badgeClass: 'available', badgeLabel: 'Always Available' },
     'mc-therapist-card',
     () => selectTherapist(anyone)
   ));
+
+  // Every therapist is listed (busy/offline can still be booked for a later slot)
+  therapists.forEach((t) => {
+    listEl.appendChild(buildTherapistCard(t, 'mc-therapist-card', () => selectTherapist(t)));
+  });
 }
 
 // Optionally pass a therapist ({ id, name }) to skip straight to the booking details.
@@ -2412,12 +2421,10 @@ async function submitBooking(event) {
       status: 'pending'
     });
     try {
-      await addDoc(collection(db, 'therapist_cases'), {
+      const caseRef = await addDoc(collection(db, 'therapist_cases'), {
         therapist_id: selectedTherapist.id,
         therapist_name: selectedTherapist.id === 'any' ? 'First Available' : selectedTherapist.name,
-        patient_id: user.uid,
-        patient_name: user.displayName || '',
-        patient_email: user.email || '',
+        ...patientIdentity(user),
         type: 'booking',
         source: 'manual_booking',
         timeslot,
@@ -2425,6 +2432,7 @@ async function submitBooking(event) {
         status: 'new',
         timestamp: new Date()
       });
+      await attachChatHistory(caseRef, user.uid);
     } catch (error) {
       console.error('Error creating therapist case:', error);
     }
@@ -2441,13 +2449,49 @@ async function submitBooking(event) {
 
 // ── Therapist case management ────────────────────────────────────
 
+function patientIdentity(user) {
+  return {
+    patient_id: user.uid,
+    patient_name: user.displayName || 'Anonymous',
+    patient_email: user.email || 'No email',
+    patient_uid: user.uid
+  };
+}
+
+// Last 20 chat_messages for a patient, formatted oldest-first for the therapist.
+async function fetchChatHistory(uid) {
+  try {
+    const snap = await getDocs(query(collection(db, 'chat_messages'), where('user_id', '==', uid)));
+    const msgs = [];
+    snap.forEach((d) => msgs.push(d.data()));
+    const time = (m) => (m.timestamp && m.timestamp.toDate ? m.timestamp.toDate() : new Date(m.timestamp || 0));
+    const last = msgs.sort((a, b) => time(a) - time(b)).slice(-20);
+    const lines = last.map((m) => `[${time(m).toLocaleString()}] ${m.role === 'user' ? 'Patient' : 'Bot'}: ${m.text || ''}`);
+    return { text: `Chat History (last 20 messages):\n${lines.join('\n')}`, count: last.length };
+  } catch (error) {
+    console.error('Error fetching chat history:', error);
+    return { text: '', count: 0 };
+  }
+}
+
+async function attachChatHistory(caseRef, uid) {
+  const history = await fetchChatHistory(uid);
+  try {
+    await updateDoc(caseRef, {
+      chat_history: history.count ? history.text : '',
+      chat_message_count: history.count,
+      chat_history_fetched_at: new Date()
+    });
+  } catch (error) {
+    console.error('Error attaching chat history:', error);
+  }
+}
+
 async function createChatbotFlagCase(user, triggerMessage, aiResponse) {
   try {
-    await addDoc(collection(db, 'therapist_cases'), {
+    const caseRef = await addDoc(collection(db, 'therapist_cases'), {
       therapist_id: 'any',
-      patient_id: user.uid,
-      patient_name: user.displayName || '',
-      patient_email: user.email || '',
+      ...patientIdentity(user),
       type: 'chatbot_flag',
       source: 'chatbot',
       trigger_message: triggerMessage,
@@ -2455,6 +2499,7 @@ async function createChatbotFlagCase(user, triggerMessage, aiResponse) {
       status: 'new',
       timestamp: new Date()
     });
+    await attachChatHistory(caseRef, user.uid);
   } catch (error) {
     console.error('Error creating chatbot flag case:', error);
   }
@@ -2476,20 +2521,23 @@ async function saveChatMessages(uid, userText, botText) {
 const THERAPIST_INTENT_REGEX = /\b(doctor|therapist|counsell?or|talk to someone|need help|book|appointment|professional)\b/i;
 
 async function showTherapistOptionsInChat() {
-  appendMessage('bot', 'It sounds like talking to someone could help. Here are our therapists. Pick one to book a session:');
+  appendMessage('bot', 'Available therapists right now:');
   const messages = document.getElementById('chatbot-messages');
   const list = document.createElement('div');
   list.className = 'chatbot-therapists';
   messages.appendChild(list);
 
-  const therapists = await fetchTherapists();
+  const all = await fetchTherapists();
+  const therapists = all.filter((t) => normalizeStatus(t.status) === 'available');
   if (!therapists.length) {
     list.remove();
-    appendMessage('bot', "I couldn't load the therapist list. You can use the Book Session button on the dashboard.");
+    appendMessage('bot', all.length
+      ? 'No therapists are available right now. Use the Book Session button on the dashboard to book a later slot.'
+      : "I couldn't load the therapist list. You can use the Book Session button on the dashboard.");
     return;
   }
   therapists.forEach((t) => {
-    list.appendChild(buildTherapistCard(t, 'mc-therapist-card compact', () => openBookingModal(t)));
+    list.appendChild(buildTherapistCard(t, 'mc-therapist-card compact', () => openBookingModal(t), false));
   });
   messages.scrollTop = messages.scrollHeight;
 }
