@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Therapist Portal - MindCare</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="/static/therapist_portal.css"/>
+</head>
+<body>
+
+  <header class="tp-header">
+    <div class="tp-header-left">
+      <span class="tp-logo">🧠 MindCare</span>
+      <span class="tp-badge">Therapist Portal</span>
+    </div>
+    <div class="tp-header-center">
+      Welcome, Dr. <span id="tp-therapist-name">...</span>
+    </div>
+    <div class="tp-header-right">
+      <button id="tp-logout-btn" class="tp-btn tp-btn-outline">Logout</button>
+    </div>
+  </header>
+
+  <div class="tp-layout">
+
+    <!-- SIDEBAR -->
+    <aside class="tp-sidebar">
+      <div class="tp-sidebar-header">
+        <h3>My Patients</h3>
+        <button class="tp-btn tp-btn-primary" id="add-patient-btn" style="font-size:12px;padding:6px 14px;">+ Add</button>
+      </div>
+      <div class="tp-search-box">
+        <input type="text" id="patient-search" placeholder="Search patients..."/>
+      </div>
+      <ul id="patient-list" class="tp-patient-list">
+        <li class="tp-loading">Loading...</li>
+      </ul>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="tp-main">
+
+      <div id="tp-empty-state" class="tp-empty-state">
+        <div class="tp-empty-icon">🩺</div>
+        <h2>Select a patient to begin</h2>
+        <p>Choose from the list or click + Add to create one.</p>
+      </div>
+
+      <div id="tp-chat-view" style="display:none;">
+
+        <div class="tp-patient-bar">
+          <div>
+            <h2 id="view-patient-name">—</h2>
+            <span id="view-patient-meta" class="tp-meta">—</span>
+          </div>
+          <div id="risk-banner" class="tp-risk-pill" style="display:none;"></div>
+        </div>
+
+        <div class="tp-tabs">
+          <button class="tp-tab active" data-tab="chat">🤖 AI Agent</button>
+          <button class="tp-tab" data-tab="history">📋 Session History</button>
+          <button class="tp-tab" data-tab="overview">📊 Overview</button>
+        </div>
+
+        <!-- AI Chat Tab -->
+        <div id="tab-chat" class="tp-tab-content active">
+          <div class="tp-chat-hint">
+            <strong>💡 You can say things like:</strong>
+            <span>"Log today's session — she was anxious for 45 mins, triggers: work stress, risk medium, next appt in 2 weeks"</span>
+            <span>"Show all sessions"</span>
+            <span>"Delete the last session"</span>
+            <span>"Update risk to high"</span>
+            <span>"Search sessions about anxiety"</span>
+          </div>
+          <div id="chat-messages" class="tp-chat-messages"></div>
+          <div class="tp-chat-input-row">
+            <textarea id="chat-input" rows="2" placeholder="Type your instruction or session notes..."></textarea>
+            <button id="chat-send-btn" class="tp-btn tp-btn-primary">
+              <span id="send-btn-text">Send ➤</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Session History Tab -->
+        <div id="tab-history" class="tp-tab-content" style="display:none;">
+          <div id="session-list" class="tp-session-list">
+            <div class="tp-loading">Loading sessions...</div>
+          </div>
+        </div>
+
+        <!-- Overview Tab -->
+        <div id="tab-overview" class="tp-tab-content" style="display:none;">
+          <div class="tp-overview-grid">
+            <div class="tp-overview-card"><span class="tp-ov-label">Total Sessions</span><span class="tp-ov-value" id="ov-total">—</span></div>
+            <div class="tp-overview-card"><span class="tp-ov-label">Last Session</span><span class="tp-ov-value" id="ov-last">—</span></div>
+            <div class="tp-overview-card"><span class="tp-ov-label">Current Risk</span><span class="tp-ov-value" id="ov-risk">—</span></div>
+            <div class="tp-overview-card"><span class="tp-ov-label">Next Appointment</span><span class="tp-ov-value" id="ov-next">—</span></div>
+            <div class="tp-overview-card"><span class="tp-ov-label">Most Common Mood</span><span class="tp-ov-value" id="ov-mood">—</span></div>
+            <div class="tp-overview-card"><span class="tp-ov-label">Avg Problem Freq</span><span class="tp-ov-value" id="ov-freq">—</span></div>
+          </div>
+          <div class="tp-overview-section">
+            <h4>Recurring Trigger Points</h4>
+            <div id="ov-triggers" class="tp-tag-cloud">—</div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ADD PATIENT MODAL -->
+  <div id="patient-modal" class="tp-modal" style="display:none;">
+    <div class="tp-modal-content">
+      <button class="tp-modal-close" id="close-patient-modal">&times;</button>
+      <h3>Add New Patient</h3>
+      <form id="patient-form">
+        <div class="tp-form-group">
+          <label>Full Name</label>
+          <input type="text" id="pm-name" placeholder="Patient full name" required/>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="tp-form-group">
+            <label>Age</label>
+            <input type="number" id="pm-age" placeholder="Age" min="1"/>
+          </div>
+          <div class="tp-form-group">
+            <label>Gender</label>
+            <select id="pm-gender">
+              <option>Male</option>
+              <option>Female</option>
+              <option>Non-binary</option>
+              <option>Prefer not to say</option>
+            </select>
+          </div>
+        </div>
+        <div class="tp-form-group">
+          <label>Primary Concern</label>
+          <input type="text" id="pm-concern" placeholder="e.g. Anxiety, Depression..."/>
+        </div>
+        <div class="tp-form-actions">
+          <button type="submit" class="tp-btn tp-btn-primary">Save Patient</button>
+          <button type="button" class="tp-btn tp-btn-outline" id="cancel-patient-modal">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- SESSION DETAIL MODAL -->
+  <div id="session-modal" class="tp-modal" style="display:none;">
+    <div class="tp-modal-content tp-modal-large">
+      <button class="tp-modal-close" id="close-session-modal">&times;</button>
+      <h3>Session Details</h3>
+      <div id="session-modal-body" class="tp-session-detail"></div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="tp-toast" class="tp-toast" style="display:none;"></div>
+
+  <script>const firebaseApiKey = "{{ api_key }}";</script>
+  <script type="module" src="/static/therapist_portal.js"></script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yoga for Mental Health</title>
+    <link rel="stylesheet" href="/static/activity.css">
+</head>
+<body>
+
+    <main class="main">
+        <section class="page-hero yoga-hero">
+            <div class="container">
+                <h2>Yoga for Mental Health</h2>
+                <p>Transform your mind through ancient practice</p>
+            </div>
+        </section>
+
+        <section class="yoga-benefits">
+            <div class="container">
+                <h3>Why Yoga is Essential for Mental Health</h3>
+                <p>Yoga combines physical postures, breathing techniques, and meditation to create powerful mental health benefits. Regular practice reduces stress hormones like cortisol, increases feel-good neurotransmitters, and activates the body's relaxation response. This ancient practice helps manage anxiety, depression, and daily stress while improving focus, emotional regulation, and overall mental clarity.</p>
+            </div>
+        </section>
+
+        <section class="yoga-exercises">
+            <div class="container">
+                <h3>Yoga Poses</h3>
+                <div class="exercise-grid" id="yogaExercises">
+                </div>
+            </div>
+        </section>
+
+        <section class="video-player" id="videoSection" style="display: none;">
+            <div class="container">
+                <h3 id="exerciseName">Yoga Pose</h3>
+                <div class="video-container">
+                    <video id="exerciseVideo" controls>
+                        <source src="" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+                <button class="btn btn-secondary" onclick="closeVideo()">Close</button>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const yogaExercises = [
+            {
+                name: "Mountain Pose",
+                image: "/static/images/mountainpose.jpg",
+                videoUrl: "path/to/mountain-pose.mp4"
+            },
+            {
+                name: "Downward Dog",
+                image: "/static/images/downwarddog.jpg", 
+                videoUrl: "path/to/downward-dog.mp4"
+            },
+            {
+                name: "Child's Pose",
+                image: "/static/images/childspose.jpeg",
+                videoUrl: "path/to/childs-pose.mp4"
+            },
+            {
+                name: "Warrior I",
+                image: "/static/images/warriorpose.jpg",
+                videoUrl: "path/to/warrior-1.mp4"
+            },
+            {
+                name: "Tree Pose",
+                image: "/static/images/treepose.jpg",
+                videoUrl: "path/to/tree-pose.mp4"
+            },
+            {
+                name: "Cobra Pose",
+                image: "/static/images/cobrapose.jpg",
+                videoUrl: "path/to/cobra-pose.mp4"
+            },
+            {
+                name: "Warrior II",
+                image: "/static/images/warrior2.jpg",
+                videoUrl: "path/to/warrior-2.mp4"
+            },
+            {
+                name: "Bridge Pose",
+                image: "/static/images/bridgepose.jpg",
+                videoUrl: "path/to/bridge-pose.mp4"
+            }
+        ];
+
+        function loadYogaExercises() {
+            const container = document.getElementById('yogaExercises');
+            container.innerHTML = '';
+            
+            yogaExercises.forEach(exercise => {
+                const exerciseCard = document.createElement('div');
+                exerciseCard.className = 'exercise-card';
+                exerciseCard.innerHTML = `
+                    <div class="exercise-image">
+                        <img src="${exercise.image}" alt="${exercise.name}">
+                    </div>
+                    <h4>${exercise.name}</h4>
+                    <button class="btn btn-primary" onclick="showExerciseVideo('${exercise.name}', '${exercise.videoUrl}')">
+                        Watch Video
+                    </button>
+                `;
+                container.appendChild(exerciseCard);
+            });
+        }
+
+        function showExerciseVideo(exerciseName, videoUrl) {
+            document.getElementById('exerciseName').textContent = exerciseName;
+            document.getElementById('exerciseVideo').src = videoUrl;
+            document.getElementById('videoSection').style.display = 'block';
+            document.getElementById('videoSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function closeVideo() {
+            document.getElementById('videoSection').style.display = 'none';
+            document.getElementById('exerciseVideo').pause();
+        }
+
+        document.addEventListener('DOMContentLoaded', loadYogaExercises);
+    </script>
+</body>
+</html>

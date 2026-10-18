@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workout for Mental Health</title>
+    <link rel="stylesheet" href="/static/activity.css">
+</head>
+<body>
+    <main class="main">
+        <section class="page-hero">
+            <div class="container">
+                <h2>Workout for Mental Health</h2>
+                <p>Build strength and boost your mood</p>
+            </div>
+        </section>
+
+        <section class="workout-benefits">
+            <div class="container">
+                <h3>Why Workout is Essential for Mental Health</h3>
+                <p>Regular exercise is one of the most powerful tools for mental wellness. Physical activity triggers the release of endorphins, serotonin, and dopamine - natural mood elevators that combat depression and anxiety. Exercise also increases BDNF (Brain-Derived Neurotrophic Factor), promoting new brain connections and improving cognitive function. It reduces stress hormones like cortisol, improves sleep quality, and builds self-confidence through achievement of fitness goals.</p>
+            </div>
+        </section>
+
+        <section class="workout-options">
+            <div class="container">
+                <h3>Choose Your Workout Type</h3>
+                <div class="options-grid">
+                    <div class="option-card">
+                        <h4>Home Workout</h4>
+                        <p>Exercise from the comfort of your home with no equipment needed</p>
+                        <button class="btn btn-primary" onclick="goToHomeWorkout()">Start Home Workout</button>
+                    </div>
+                    <div class="option-card">
+                        <h4>Gym Workout</h4>
+                        <p>Structured workouts designed for gym equipment and facilities</p>
+                        <button class="btn btn-primary" onclick="goToGymWorkout()">Start Gym Workout</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        function goToHomeWorkout() {
+            window.location.href = '/HomeWorkout';
+        }
+
+        function goToGymWorkout() {
+            window.location.href = 'GymWorkout';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Therapist Login - MindCare</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/login.css" />
+  <link rel="stylesheet" href="/static/therapist_login.css" />
+  <link rel="icon" href="/static/images/favicon.ico" type="image/x-icon" />
+</head>
+<body>
+  <div class="login-container therapist-login-container">
+    <div class="therapist-badge">🩺 Therapist Portal</div>
+    <h2>Login to <span>MindCare</span></h2>
+    <p class="portal-subtitle">Secure access for licensed therapists only</p>
+
+    <form id="therapist-login-form">
+      <div class="input-group">
+        <input type="email" id="therapist-email" name="email" placeholder="Enter your therapist email" required />
+        <label for="therapist-email">Therapist Email</label>
+      </div>
+      <div class="input-group">
+        <input type="password" id="therapist-password" name="password" placeholder="Enter your password" required />
+        <label for="therapist-password">Password</label>
+      </div>
+      <button type="submit" id="login-btn">Login to Portal</button>
+    </form>
+
+    <div id="error-msg"></div>
+
+    <div class="signup-link">
+      <a href="/">← Back to MindCare Home</a>
+    </div>
+    <p class="admin-note">Don't have access? Contact your MindCare administrator.</p>
+  </div>
+
+  <script>const firebaseApiKey = "{{ api_key }}";</script>
+  <script type="module" src="/static/therapist_login.js"></script>
+</body>
+</html>

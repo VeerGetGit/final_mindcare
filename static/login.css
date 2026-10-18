@@ -1,0 +1,436 @@
+/* Reset and Base Styling */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --primary-purple: #8B7AAE;
+  --secondary-purple: #A58FCA;
+  --accent-peach: #F5E6D3;
+  --light-purple: #C4B5E0;
+  --very-light-peach: #FDF8F3;
+  --white: #ffffff;
+  --text-dark: #4A3B5C;
+  --text-medium: #6B5B7A;
+  --text-light: #8B7AAE;
+  --error-red: #E74C3C;
+  --shadow-light: rgba(139, 122, 174, 0.15);
+  --shadow-medium: rgba(139, 122, 174, 0.25);
+  --gradient-purple: linear-gradient(135deg, #A58FCA 0%, #8B7AAE 100%);
+  --gradient-peach: linear-gradient(135deg, #F5E6D3 0%, #F0D7B8 100%);
+  --gradient-bg: linear-gradient(135deg, #FDF8F3 0%, #F5E6D3 50%, #C4B5E0 100%);
+}
+
+body {
+  font-family: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--gradient-bg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animated Background Elements */
+body::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(165, 143, 202, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(245, 230, 211, 0.2) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(196, 181, 224, 0.1) 0%, transparent 50%);
+  pointer-events: none;
+  animation: backgroundFloat 20s ease-in-out infinite;
+}
+
+@keyframes backgroundFloat {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+}
+
+.login-container {
+  background: linear-gradient(135deg, var(--white) 0%, var(--very-light-peach) 100%);
+  padding: 50px 40px;
+  border-radius: 25px;
+  box-shadow: 
+    0 20px 60px var(--shadow-medium),
+    0 0 0 1px rgba(139, 122, 174, 0.1);
+  width: 100%;
+  max-width: 420px;
+  position: relative;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  animation: containerSlideIn 0.8s ease-out;
+}
+
+@keyframes containerSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.login-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: var(--gradient-purple);
+  border-radius: 25px 25px 0 0;
+}
+
+.login-container h2 {
+  text-align: center;
+  margin-bottom: 40px;
+  color: var(--text-dark);
+  font-size: 2.2rem;
+  font-weight: 700;
+  position: relative;
+  animation: titleFadeIn 1s ease-out 0.3s both;
+}
+
+@keyframes titleFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-container h2 span {
+  background: var(--gradient-purple);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  position: relative;
+}
+
+.login-container h2 span::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: var(--gradient-peach);
+  border-radius: 2px;
+  animation: underlineExpand 0.8s ease-out 0.8s both;
+}
+
+@keyframes underlineExpand {
+  from {
+    width: 0;
+    left: 50%;
+  }
+  to {
+    width: 100%;
+    left: 0;
+  }
+}
+
+#login-form {
+  animation: formSlideIn 0.8s ease-out 0.2s both;
+}
+
+@keyframes formSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-dark);
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: color 0.3s ease;
+}
+
+.input-group {
+  position: relative;
+  margin-bottom: 25px;
+}
+
+
+input {
+  width: 100%;
+  padding: 15px 20px;
+  border: 2px solid transparent;
+  border-radius: 15px;
+  background: var(--white);
+  color: var(--text-dark);
+  font-size: 16px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(139, 122, 174, 0.1);
+  position: relative;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--primary-purple);
+  background: var(--very-light-peach);
+  box-shadow: 
+    0 8px 25px rgba(139, 122, 174, 0.2),
+    0 0 0 4px rgba(139, 122, 174, 0.1);
+  transform: translateY(-2px);
+}
+
+input:focus + label,
+input:not(:placeholder-shown) + label {
+  color: var(--primary-purple);
+}
+
+button {
+  width: 100%;
+  padding: 16px 20px;
+  background: var(--gradient-purple);
+  color: var(--white);
+  border: none;
+  border-radius: 15px;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 25px rgba(139, 122, 174, 0.3);
+  position: relative;
+  overflow: hidden;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+button:hover::before {
+  left: 100%;
+}
+
+button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 35px rgba(139, 122, 174, 0.4);
+}
+
+button:active {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(139, 122, 174, 0.3);
+}
+
+.signup-link {
+  margin-top: 30px;
+  text-align: center;
+  font-size: 15px;
+  color: var(--text-medium);
+  animation: linkFadeIn 1s ease-out 0.6s both;
+}
+
+@keyframes linkFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.signup-link a {
+  color: var(--primary-purple);
+  text-decoration: none;
+  font-weight: 700;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.signup-link a::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--gradient-peach);
+  transition: width 0.3s ease;
+}
+
+.signup-link a:hover {
+  color: var(--secondary-purple);
+  transform: translateY(-1px);
+}
+
+.signup-link a:hover::after {
+  width: 100%;
+}
+
+#error-msg {
+  color: var(--error-red);
+  text-align: center;
+  margin-top: 20px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid rgba(231, 76, 60, 0.2);
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.3s ease;
+}
+
+#error-msg.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Loading State */
+button.loading {
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+button.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid transparent;
+  border-top: 2px solid var(--white);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Input Validation States */
+input.error {
+  border-color: var(--error-red);
+  background: rgba(231, 76, 60, 0.05);
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+input.success {
+  border-color: var(--secondary-purple);
+  background: rgba(165, 143, 202, 0.05);
+}
+
+/* Responsive Design */
+@media (max-width: 500px) {
+  body {
+    padding: 15px;
+  }
+
+  .login-container {
+    padding: 40px 25px;
+    max-width: 100%;
+  }
+
+  .login-container h2 {
+    font-size: 1.8rem;
+    margin-bottom: 30px;
+  }
+
+  input, button {
+    font-size: 15px;
+    padding: 12px 16px;
+  }
+
+  label {
+    font-size: 13px;
+  }
+
+  .signup-link {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 350px) {
+  .login-container {
+    padding: 30px 20px;
+  }
+
+  .login-container h2 {
+    font-size: 1.6rem;
+  }
+
+  input, button {
+    padding: 10px 14px;
+  }
+}
+
+/* Accessibility Improvements */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus States for Accessibility */
+button:focus,
+input:focus,
+a:focus {
+  outline: 3px solid var(--secondary-purple);
+  outline-offset: 2px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --white: #2c2c2c;
+    --very-light-peach: #3c3c3c;
+    --text-dark: #e0e0e0;
+    --text-medium: #b0b0b0;
+  }
+}

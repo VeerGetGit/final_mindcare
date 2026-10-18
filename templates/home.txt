@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mental Health Companion</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap" rel="stylesheet" />
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/static/style.css" />
+
+  <!-- Favicon -->
+  <link rel="icon" href="/static/images/favicon.ico" type="image/x-icon" />
+</head>
+
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <a href="/" class="logo">MindCare</a>
+    <div class="nav-buttons">
+      <a href="#checkin"><button class="tools-btn">Mood Check-In</button></a>
+      <a href="#tools"><button class="tools-btn">Self-Care Tools</button></a>
+      <a href="#start"><button class="tools-btn">Get Started</button></a>
+      <a href="/login"><button class="tools-btn login-btn">Login</button></a>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero_img">
+    <img src="/static/images/head.png" alt="Mental Health Support Image" />
+    <p class="empowering-text">Empowering <span>You</span> to Prioritize Mental Wellness</p>
+    <p>
+      Welcome to MindCare — your daily companion in understanding emotions, managing stress, and practicing self-care.
+      Simple, private, and made with care to support your mental health journey.
+    </p>
+  </section>
+
+  <!-- Call to Action Buttons -->
+  <div class="buttons">
+    <a href="#checkin"><button>Start Check-In</button></a>
+    <button class="learn" onclick="focus_1()">Learn More</button>
+  </div>
+
+  <!-- Motivational Quote -->
+  <section class="quote">
+    <p><span>"Taking care of your mind is the most powerful act of self-love."</span></p>
+  </section>
+
+  <!-- Why Section -->
+  <section class="why" id="tools">
+    <h1>Why <span>Mental Health Matters</span></h1>
+    <h2 class="head">Your Personal Mental Health Companion</h2>
+    <div class="card-grid">
+      <div class="card-row">
+        <img src="/static/images/selfcare.png" alt="Well-being">
+        <div class="card-text">
+          <h3>Well-being</h3>
+          <p>Mental health is not just about avoiding mental illness—it plays a vital role in shaping how we think, feel, and behave daily. A healthy mind contributes to physical health, better sleep, improved relationships, and a greater sense of life satisfaction. When our mental health is stable, we are more likely to cope with daily stress and live a balanced life.</p>
+        </div>
+      </div>
+      <div class="card-row reverse">
+        <div class="card-text">
+          <h3>Productivity</h3>
+          <p>Good mental health enhances our ability to make sound decisions, stay focused, and be productive. In academic, professional, or personal life, clarity of thought and emotional stability help us perform tasks efficiently. On the other hand, poor mental health can lead to confusion, procrastination, and reduced performance.</p>
+        </div>
+        <img src="/static/images/journaling.jpg" alt="Productivity">
+      </div>
+      <div class="card-row">
+        <img src="/static/images/breathing.jpeg" alt="Health">
+        <div class="card-text">
+          <h3>Health</h3>
+          <p>There is a strong connection between the mind and body. Conditions like chronic stress, depression, or anxiety can weaken the immune system, increase blood pressure, and lead to heart problems or other illnesses. Taking care of mental health can help in preventing these issues and maintaining physical wellness.</p>
+        </div>
+      </div>
+      <div class="card-row reverse">
+        <div class="card-text">
+          <h3>Resilience</h3>
+          <p>Life is full of challenges and uncertainties. Mental health provides the emotional tools needed to handle setbacks, failures, or traumatic events. Resilient individuals are better equipped to bounce back from adversity, adapt to change, and maintain hope, even in difficult situations.</p>
+        </div>
+        <img src="/static/images/community.jpg" alt="Resilience">
+      </div>
+      <div class="card-row">
+        <img src="/static/images/mindfulness.jpg" alt="Relationships">
+        <div class="card-text">
+          <h3>Relationships</h3>
+          <p>Mental well-being allows us to connect meaningfully with others. It fosters empathy, patience, and effective communication—key ingredients for strong personal and professional relationships. When mental health is compromised, it may lead to withdrawal, conflict, or isolation, which further worsens emotional distress.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Start Section -->
+  <section class="start" id="start">
+    <h1>Let’s Get <span>Started</span></h1>
+    <p>Your journey to better emotional well-being starts here.</p>
+    <p><span>Click</span> below to begin a daily check-in. Explore self-care activities tailored just for you.</p>
+    <img src="/static/images/mental_support.png" alt="Person feeling supported" />
+    <a href="#checkin"><button><i class="fa-solid fa-arrow-right"></i> Start Now</button></a>
+  </section>
+
+  <!-- External Script Link -->
+  <script src="/static/script.js" defer></script>
+</body>
+</html>
+
+
+// Select elements
+const scrolle = document.querySelector(".scroll");
+const img_cont = document.querySelector(".img_content");
+const head = document.querySelector(".head");
+const right = document.querySelector('.fa-circle-chevron-right');
+const left = document.querySelector('.fa-circle-chevron-left');
+
+// Content arrays
+const img_arr = [
+  "/static/images/selfcare.jpg",
+  "/static/images/journaling.jpg",
+  "/static/images/breathing.jpg",
+  "/static/images/community.jpg",
+  "/static/images/mindfulness.jpg"
+];
+
+const content_arr = [
+  "Mental health is not just about avoiding mental illness—it plays a vital role in shaping how we think, feel, and behave daily. A healthy mind contributes to physical health, better sleep, improved relationships, and a greater sense of life satisfaction. When our mental health is stable, we are more likely to cope with daily stress and live a balanced life.",
+  "Good mental health enhances our ability to make sound decisions, stay focused, and be productive. In academic, professional, or personal life, clarity of thought and emotional stability help us perform tasks efficiently. On the other hand, poor mental health can lead to confusion, procrastination, and reduced performance.",
+  "There is a strong connection between the mind and body. Conditions like chronic stress, depression, or anxiety can weaken the immune system, increase blood pressure, and lead to heart problems or other illnesses. Taking care of mental health can help in preventing these issues and maintaining physical wellness.",
+  "Life is full of challenges and uncertainties. Mental health provides the emotional tools needed to handle setbacks, failures, or traumatic events. Resilient individuals are better equipped to bounce back from adversity, adapt to change, and maintain hope, even in difficult situations.",
+  "Mental well-being allows us to connect meaningfully with others. It fosters empathy, patience, and effective communication—key ingredients for strong personal and professional relationships. When mental health is compromised, it may lead to withdrawal, conflict, or isolation, which further worsens emotional distress."
+];
+
+const head_arr = [
+  "Well-being",
+  "Productivity",
+  "Health",
+  "Resilience",
+  "Relationships"
+];
+
+// Initial index
+let index = 0;
+
+// Setup initial state
+updateContent();
+updateArrows();
+
+// Function: move forward
+function increment() {
+  if (index < img_arr.length - 1) {
+    index++;
+    updateContent();
+    updateArrows();
+  }
+}
+
+// Function: move backward
+function decrement() {
+  if (index > 0) {
+    index--;
+    updateContent();
+    updateArrows();
+  }
+}
+
+// Function: update displayed content
+function updateContent() {
+  scrolle.src = img_arr[index];
+  img_cont.textContent = content_arr[index];
+  head.textContent = head_arr[index];
+}
+
+// Function: control arrow styling
+function updateArrows() {
+  // Left arrow
+  if (index === 0) {
+    left.style.color = "rgb(180, 180, 180)";
+    left.style.cursor = "not-allowed";
+  } else {
+    left.style.color = "#00756a";
+    left.style.cursor = "pointer";
+  }
+
+  // Right arrow
+  if (index === img_arr.length - 1) {
+    right.style.color = "rgb(180, 180, 180)";
+    right.style.cursor = "not-allowed";
+  } else {
+    right.style.color = "#00756a";
+    right.style.cursor = "pointer";
+  }
+}
+
+// Optional: smooth scroll for Learn More button
+function focus_1() {
+  document.querySelector(".why").scrollIntoView({ behavior: "smooth" });
+}
+
+
+/* Reset and Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --primary-purple: #8B7AAE;
+  --secondary-purple: #A58FCA;
+  --accent-peach: #F5E6D3;
+  --light-purple: #C4B5E0;
+  --very-light-peach: #FDF8F3;
+  --white: #ffffff;
+  --text-dark: #4A3B5C;
+  --text-medium: #6B5B7A;
+  --text-light: #8B7AAE;
+  --shadow-light: rgba(139, 122, 174, 0.1);
+  --shadow-medium: rgba(139, 122, 174, 0.2);
+  --shadow-dark: rgba(139, 122, 174, 0.3);
+  --gradient-purple: linear-gradient(135deg, #A58FCA 0%, #8B7AAE 100%);
+  --gradient-peach: linear-gradient(135deg, #F5E6D3 0%, #F0D7B8 100%);
+  --gradient-bg: linear-gradient(135deg, #FDF8F3 0%, #F5E6D3 100%);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--gradient-bg);
+  color: var(--text-dark);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* Utility Classes */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.section-padding {
+  padding: 4rem 0;
+}
+
+/* Navbar */
+.navbar {
+  background: var(--gradient-purple);
+  backdrop-filter: blur(10px);
+  color: var(--white);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.2rem 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 4px 20px var(--shadow-light);
+  transition: all 0.3s ease;
+}
+
+.navbar:hover {
+  box-shadow: 0 8px 30px var(--shadow-medium);
+}
+
+.navbar .logo {
+  font-size: 2rem;
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--white);
+  position: relative;
+  transition: transform 0.3s ease;
+}
+
+.navbar .logo:hover {
+  transform: scale(1.05);
+}
+
+.navbar .logo::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  width: 0;
+  height: 3px;
+  background: var(--accent-peach);
+  transition: width 0.3s ease;
+}
+
+.navbar .logo:hover::after {
+  width: 100%;
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.nav-buttons a {
+  text-decoration: none;
+}
+
+.tools-btn {
+  background: var(--gradient-peach);
+  color: var(--text-dark);
+  border: none;
+  padding: 0.7rem 1.5rem;
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(245, 230, 211, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.tools-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.tools-btn:hover::before {
+  left: 100%;
+}
+
+.tools-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(245, 230, 211, 0.6);
+}
+
+.login-btn {
+  background: var(--gradient-purple);
+  color: var(--white);
+  box-shadow: 0 4px 15px rgba(165, 143, 202, 0.3);
+}
+
+.login-btn:hover {
+  box-shadow: 0 8px 25px rgba(165, 143, 202, 0.4);
+}
+
+/* Hero Section */
+.hero_img {
+  text-align: center;
+  padding: 5rem 2rem 4rem;
+  background: linear-gradient(135deg, #F5E6D3 0%, #FDF8F3 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero_img::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 20% 80%, rgba(245, 230, 211, 0.3) 0%, transparent 50%),
+              radial-gradient(circle at 80% 20%, rgba(165, 143, 202, 0.2) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.hero_img > * {
+  position: relative;
+  z-index: 1;
+}
+
+.hero_img img {
+  width: 100%;
+  max-width: 900px;
+  height: 500px;
+  object-fit: cover;
+  border-radius: 25px;
+  box-shadow: 0 20px 60px var(--shadow-dark);
+  animation: heroFloat 8s ease-in-out infinite;
+  transition: transform 0.3s ease;
+}
+
+.hero_img img:hover {
+  transform: scale(1.02);
+}
+
+@keyframes heroFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+.empowering-text {
+  font-size: 3rem;
+  margin-top: 3rem;
+  color: var(--primary-purple);
+  font-weight: 700;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  animation: fadeInUp 1s ease-out;
+}
+
+.empowering-text span {
+  color: var(--secondary-purple);
+  position: relative;
+}
+
+.empowering-text span::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: var(--gradient-peach);
+  border-radius: 2px;
+}
+
+.hero_img p {
+  font-size: 1.2rem;
+  max-width: 800px;
+  margin: 2rem auto;
+  line-height: 1.8;
+  color: var(--text-medium);
+  animation: fadeInUp 1s ease-out 0.3s both;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Buttons Section */
+.buttons {
+  text-align: center;
+  margin: 3rem 0;
+  animation: fadeInUp 1s ease-out 0.6s both;
+}
+
+.buttons button {
+  background: var(--gradient-purple);
+  color: var(--white);
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 50px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 6px 20px rgba(165, 143, 202, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.buttons .learn {
+  background: var(--gradient-peach);
+  color: var(--text-dark);
+  box-shadow: 0 6px 20px rgba(245, 230, 211, 0.4);
+}
+
+.buttons button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.buttons button:hover::before {
+  left: 100%;
+}
+
+.buttons button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(165, 143, 202, 0.4);
+}
+
+.buttons .learn:hover {
+  box-shadow: 0 10px 30px rgba(245, 230, 211, 0.6);
+}
+
+/* Quote Section */
+.quote {
+  text-align: center;
+  font-size: 1.5rem;
+  font-style: italic;
+  margin: 4rem 2rem;
+  color: var(--text-medium);
+  position: relative;
+  padding: 2rem;
+}
+
+.quote::before,
+.quote::after {
+  content: '"';
+  font-size: 4rem;
+  color: var(--secondary-purple);
+  opacity: 0.4;
+  position: absolute;
+  font-family: Georgia, serif;
+}
+
+.quote::before {
+  top: 0;
+  left: 1rem;
+}
+
+.quote::after {
+  bottom: 0;
+  right: 1rem;
+}
+
+.quote span {
+  color: var(--primary-purple);
+  font-weight: 600;
+}
+
+/* Why Section */
+.why {
+  background: var(--white);
+  padding: 6rem 2rem;
+  text-align: center;
+  position: relative;
+}
+
+.why::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: var(--gradient-purple);
+}
+
+.why h1 {
+  font-size: 2.8rem;
+  color: var(--primary-purple);
+  margin-bottom: 1rem;
+  font-weight: 700;
+}
+
+.why h1 span {
+  color: var(--secondary-purple);
+}
+
+.why .head {
+  font-size: 1.5rem;
+  color: var(--text-light);
+  margin-bottom: 4rem;
+  font-weight: 300;
+}
+
+/* Enhanced Card Grid */
+.card-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.card-row {
+  display: flex;
+  align-items: center;
+  gap: 4rem;
+  padding: 3rem;
+  background: linear-gradient(135deg, var(--white) 0%, var(--very-light-peach) 100%);
+  border-radius: 25px;
+  box-shadow: 0 10px 40px var(--shadow-light);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: var(--gradient-purple);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.card-row:hover::before {
+  transform: scaleX(1);
+}
+
+.card-row:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 20px 60px var(--shadow-medium);
+}
+
+.card-row.reverse {
+  flex-direction: row-reverse;
+}
+
+.card-row.reverse::before {
+  background: var(--gradient-peach);
+}
+
+.card-row img {
+  width: 280px;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px var(--shadow-light);
+  transition: all 0.3s ease;
+  animation: cardFloat 6s ease-in-out infinite;
+}
+
+.card-row:nth-child(even) img {
+  animation: cardFloatReverse 6.5s ease-in-out infinite;
+}
+
+.card-row img:hover {
+  transform: scale(1.05);
+  box-shadow: 0 15px 40px var(--shadow-medium);
+}
+
+@keyframes cardFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-15px);
+  }
+}
+
+@keyframes cardFloatReverse {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+.card-text {
+  flex: 1;
+  text-align: left;
+  padding: 1rem;
+}
+
+.card-text h3 {
+  font-size: 1.8rem;
+  color: var(--primary-purple);
+  margin-bottom: 1.5rem;
+  font-weight: 700;
+  position: relative;
+}
+
+.card-text h3::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  width: 60px;
+  height: 4px;
+  background: var(--gradient-peach);
+  border-radius: 2px;
+}
+
+.card-text p {
+  font-size: 1.1rem;
+  color: var(--text-medium);
+  line-height: 1.8;
+  margin: 0;
+}
+
+/* Start Section */
+.start {
+  background: linear-gradient(135deg, #F5E6D3 0%, #FDF8F3 100%);
+  border-radius: 30px;
+  text-align: center;
+  padding: 5rem 2rem;
+  margin: 5rem auto;
+  max-width: 900px;
+  box-shadow: 0 15px 50px var(--shadow-light);
+  position: relative;
+  overflow: hidden;
+}
+
+.start::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: var(--gradient-purple);
+}
+
+.start h1 {
+  font-size: 2.8rem;
+  color: var(--primary-purple);
+  margin-bottom: 1.5rem;
+  font-weight: 700;
+}
+
+.start h1 span {
+  color: var(--secondary-purple);
+}
+
+.start p {
+  font-size: 1.2rem;
+  color: var(--text-medium);
+  margin: 1rem auto;
+  max-width: 600px;
+  line-height: 1.7;
+}
+
+.start img {
+  max-width: 400px;
+  height: 280px;
+  object-fit: cover;
+  border-radius: 20px;
+  margin: 3rem 0;
+  animation: startFloat 7s ease-in-out infinite;
+  box-shadow: 0 15px 40px var(--shadow-light);
+  transition: transform 0.3s ease;
+}
+
+.start img:hover {
+  transform: scale(1.05);
+}
+
+@keyframes startFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-18px);
+  }
+}
+
+.start button {
+  background: var(--gradient-purple);
+  color: var(--white);
+  padding: 1.2rem 2.5rem;
+  border: none;
+  border-radius: 50px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 25px rgba(165, 143, 202, 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.start button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.start button:hover::before {
+  left: 100%;
+}
+
+.start button:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 40px rgba(165, 143, 202, 0.4);
+}
+
+.start button i {
+  transition: transform 0.3s ease;
+}
+
+.start button:hover i {
+  transform: translateX(5px);
+}
+
+/* Scroll Animations */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .container {
+    padding: 0 2rem;
+  }
+  
+  .card-row {
+    gap: 2rem;
+    padding: 2rem;
+  }
+  
+  .card-row img {
+    width: 240px;
+    height: 180px;
+  }
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    flex-direction: column;
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .nav-buttons {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .empowering-text {
+    font-size: 2.2rem;
+  }
+
+  .hero_img {
+    padding: 3rem 1rem;
+  }
+
+  .hero_img img {
+    max-width: 100%;
+    height: 300px;
+  }
+
+  .card-grid {
+    gap: 2rem;
+  }
+
+  .card-row,
+  .card-row.reverse {
+    flex-direction: column;
+    gap: 2rem;
+    padding: 2rem 1rem;
+    margin: 0 1rem;
+  }
+
+  .card-row img {
+    width: 100%;
+    max-width: 300px;
+    height: 200px;
+  }
+
+  .card-text {
+    text-align: center;
+    padding: 0;
+  }
+
+  .card-text h3::after {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .buttons button {
+    width: 100%;
+    max-width: 300px;
+    margin: 0.5rem auto;
+    display: block;
+  }
+
+  .start {
+    margin: 3rem 1rem;
+    padding: 3rem 1.5rem;
+  }
+
+  .start img {
+    max-width: 100%;
+    height: 200px;
+  }
+
+  .why h1 {
+    font-size: 2.2rem;
+  }
+
+  .start h1 {
+    font-size: 2.2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .empowering-text {
+    font-size: 1.8rem;
+  }
+
+  .hero_img img {
+    height: 250px;
+  }
+
+  .card-row img {
+    height: 160px;
+  }
+
+  .card-text h3 {
+    font-size: 1.4rem;
+  }
+
+  .card-text p {
+    font-size: 1rem;
+  }
+
+  .start img {
+    height: 170px;
+  }
+
+  .quote {
+    font-size: 1.2rem;
+    margin: 2rem 1rem;
+  }
+
+  .tools-btn {
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* Loading Animation */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Accessibility Improvements */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Focus States for Accessibility */
+button:focus,
+a:focus {
+  outline: 3px solid var(--secondary-purple);
+  outline-offset: 2px;
+}
+
+/* Print Styles */
+@media print {
+  .navbar,
+  .buttons,
+  button {
+    display: none;
+  }
+  
+  .hero_img img,
+  .card-row img,
+  .start img {
+    filter: grayscale(100%);
+  }
+}

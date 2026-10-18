@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mood Dashboard</title>
+    <link rel="stylesheet" href="/static/dashboard.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.3.0/chart.umd.min.js"></script>
+</head>
+
+<body>
+    <div class="particles-container"></div>
+
+    <header class="dashboard-header">
+        <div class="profile-container">
+            <img id="profile-pic" class="profile-pic" src="https://via.placeholder.com/100" alt="Profile" />
+
+            <!-- Dropdown -->
+            <div id="profile-dropdown" class="dropdown">
+                <button id="upload-option">📷 Upload Photo</button>
+                <button id="logout">🚪 Logout</button>
+            </div>
+
+            <!-- Hidden file input for image upload -->
+            <input type="file" id="upload-pic" accept="image/*" style="display: none;" />
+        </div>
+
+        <nav class="activity">
+            <a href="/yoga" class="nav-link">
+                <span class="nav-icon">🧘‍♀️</span>
+                <span class="nav-text">YOGA</span>
+            </a>
+            <a href="/workout" class="nav-link">
+                <span class="nav-icon">💪</span>
+                <span class="nav-text">WORKOUT</span>
+            </a>
+        </nav>
+
+        <div>
+            <h1>Welcome, <span id="username">User</span></h1>
+            <p class="user-greeting">Track your moods and journal daily</p>
+        </div>
+    </header>
+
+
+    <main class="dashboard-content">
+
+        <div class="dashboard-card" id="chat-card">
+            <h2>💬 Peer Support Chat</h2>
+
+            <!-- Chat Room Selector -->
+            <select id="chat-room-selector" class="chat-room-selector">
+                <option value="general">General</option>
+                <option value="anxiety-support">Anxiety Support</option>
+                <option value="motivation-room">Motivation Room</option>
+            </select>
+
+            <!-- Chat Window -->
+            <div id="chat-window" class="chat-window"></div>
+
+            <!-- Chat Input -->
+            <div class="chat-input-section">
+                <input type="text" id="chat-input" class="chat-input" placeholder="Type your message..." />
+                <button id="send-chat" class="chat-send-button">Send</button>
+            </div>
+        </div>
+
+
+        <div class="dashboard-card mood-card">
+            <h2>🎭 Today's Mood</h2>
+            <form id="mood-form">
+                <select id="mood-select" required>
+                    <option value="">Select your mood...</option>
+                    <option value="angry">😡 Angry</option>
+                    <option value="sad">😢 Sad</option>
+                    <option value="anxious">😰 Anxious</option>
+                    <option value="tired">😴 Tired</option>
+                    <option value="calm">😌 Calm</option>
+                    <option value="content">😊 Content</option>
+                    <option value="happy">😀 Happy</option>
+                    <option value="peaceful">😇 Peaceful</option>
+                    <option value="excited">🤩 Excited</option>
+                    <option value="energetic">⚡ Energetic</option>
+                </select>
+                <button id="submit-mood" type="submit">Save Mood</button>
+            </form>
+        </div>
+
+
+        <div class="dashboard-card journal-card">
+            <h2>📖 Daily Journal</h2>
+            <form id="journal-form">
+                <input type="date" id="journal-date-picker" required />
+                <textarea id="journal-text" placeholder="Write your thoughts..." rows="5"></textarea>
+                <button id="save-journal" type="submit">Save Journal</button>
+            </form>
+        </div>
+
+        <div class="dashboard-card">
+            <h2>📊 Your Mood Over Time</h2>
+            <div class="chart-navigation">
+                <button id="prev-week" title="Previous Week">❮</button>
+                <canvas id="mood-chart"></canvas>
+                <button id="next-week" title="Next Week">❯</button>
+
+            </div>
+        </div>
+
+        <div class="dashboard-card" id="ai-suggestions-card">
+            <h2>🤖 AI Suggestions</h2>
+            <div id="ai-suggestions">Loading...</div>
+        </div>
+
+
+
+        <div class="dashboard-card habit-card">
+            <h2>✅ Daily Habits</h2>
+            <div class="habit-tracker">
+                <div class="habit-streak">
+                    <span>🔥 Current Streak: <strong id="current-streak">0</strong> days</span>
+                </div>
+
+                <div class="habits-list">
+                    <div class="habit-item" data-habit="hydration">
+                        <div class="habit-info">
+                            <span class="habit-icon">💧</span>
+                            <span class="habit-name">Hydration (8 glasses)</span>
+                        </div>
+                        <div class="habit-controls">
+                            <div class="water-tracker">
+                                <span class="glasses-count">0/8</span>
+                                <button class="add-glass">+</button>
+                                <button class="remove-glass">-</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="habit-item" data-habit="sleep">
+                        <div class="habit-info">
+                            <span class="habit-icon">😴</span>
+                            <span class="habit-name">Sleep (7+ hours)</span>
+                        </div>
+                        <div class="habit-controls">
+                            <input type="number" class="sleep-hours" min="0" max="24" step="0.5" placeholder="Hours">
+                            <button class="toggle-habit" data-target="7">✓</button>
+                        </div>
+                    </div>
+
+                    <div class="habit-item" data-habit="exercise">
+                        <div class="habit-info">
+                            <span class="habit-icon">💪</span>
+                            <span class="habit-name">Exercise (30 min)</span>
+                        </div>
+                        <div class="habit-controls">
+                            <input type="number" class="exercise-minutes" min="0" max="480" placeholder="Minutes">
+                            <button class="toggle-habit" data-target="30">✓</button>
+                        </div>
+                    </div>
+
+                    <div class="habit-item" data-habit="meditation">
+                        <div class="habit-info">
+                            <span class="habit-icon">🧘</span>
+                            <span class="habit-name">Meditation</span>
+                        </div>
+                        <div class="habit-controls">
+                            <button class="meditation-btn" data-duration="5">5min</button>
+                            <button class="meditation-btn" data-duration="10">10min</button>
+                            <button class="meditation-btn" data-duration="15">15min</button>
+                            <button class="toggle-habit completed">✓</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="habits-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="daily-progress"></div>
+                    </div>
+                    <span class="progress-text">Today's Progress: <span id="progress-percentage">0%</span></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-card">
+            <h2>📚 Recent Journal Entries</h2>
+            <div id="journal-view">
+                <div class="loading"></div>
+            </div>
+        </div>
+    </main>
+
+    <div id="meditation-modal" class="meditation-modal">
+        <div class="meditation-content">
+            <button class="close-meditation">&times;</button>
+            <h2>🧘 Guided Meditation</h2>
+
+            <div class="meditation-setup" id="meditation-setup">
+                <h3>Choose Your Session</h3>
+                <div class="meditation-options">
+                    <button class="meditation-type" data-type="breathing" data-duration="5">
+                        <span class="meditation-emoji">🌬️</span>
+                        <span>Breathing Focus</span>
+                        <small>5 minutes</small>
+                    </button>
+                    <button class="meditation-type" data-type="body-scan" data-duration="10">
+                        <span class="meditation-emoji">🏃</span>
+                        <span>Body Scan</span>
+                        <small>10 minutes</small>
+                    </button>
+                    <button class="meditation-type" data-type="mindfulness" data-duration="15">
+                        <span class="meditation-emoji">🌸</span>
+                        <span>Mindfulness</span>
+                        <small>15 minutes</small>
+                    </button>
+                    <button class="meditation-type" data-type="loving-kindness" data-duration="12">
+                        <span class="meditation-emoji">💝</span>
+                        <span>Loving Kindness</span>
+                        <small>12 minutes</small>
+                    </button>
+                </div>
+            </div>
+
+            <div class="meditation-session" id="meditation-session" style="display: none;">
+                <div class="meditation-timer">
+                    <div class="timer-circle">
+                        <div class="timer-text">
+                            <span id="timer-minutes">05</span>:<span id="timer-seconds">00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="meditation-guide">
+                    <h3 id="meditation-title">Breathing Focus</h3>
+                    <p id="meditation-instruction">Take a deep breath in... and slowly breathe out...</p>
+                    <div class="breathing-indicator" id="breathing-indicator">
+                        <div class="breath-circle"></div>
+                    </div>
+                </div>
+
+                <div class="meditation-controls">
+                    <button id="play-pause-btn" class="meditation-control-btn">⏸️ Pause</button>
+                    <button id="stop-meditation" class="meditation-control-btn">⏹️ Stop</button>
+                </div>
+
+                <div class="meditation-progress-ring">
+                    <svg class="progress-ring" width="120" height="120">
+                        <circle class="progress-ring-circle" stroke="#00d4ff" stroke-width="4" fill="transparent" r="54"
+                            cx="60" cy="60" />
+                    </svg>
+                </div>
+            </div>
+
+            <div class="meditation-complete" id="meditation-complete" style="display: none;">
+                <div class="completion-animation">🌟</div>
+                <h3>Meditation Complete!</h3>
+                <p>Great job! You've completed your meditation session.</p>
+                <button id="meditation-done" class="meditation-control-btn">Done</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Missed Streak Modal -->
+    <div id="missedDaysModal" class="modal">
+        <div class="modal-content">
+            <span id="closeMissedModal" class="close-btn">&times;</span>
+            <h2>⚠️ Missed Habit Alert!</h2>
+            <p id="missedMessage"></p>
+            <button id="acknowledgeBtn">Okay</button>
+        </div>
+    </div>
+
+    <div id="centered-notification-container"></div>
+
+    <script>
+        const firebaseApiKey = "{{ api_key }}";
+    </script>
+
+    <script type="module" src="/static/dashboard.js"></script>
+
+
+</body>
+
+</html>

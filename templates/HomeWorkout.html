@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Workout for Mental Health</title>
+    <link rel="stylesheet" href="/static/activity.css">
+</head>
+<body>
+    <main class="main">
+        <section class="page-hero">
+            <div class="container">
+                <h2>Home Workout for Mental Health</h2>
+                <p>Effective bodyweight exercises for mental wellness</p>
+            </div>
+        </section>
+
+        <section class="workout-benefits">
+            <div class="container">
+                <h3>Why Home Workouts Support Mental Health</h3>
+                <p>Home workouts offer convenience and accessibility that removes barriers to mental health benefits from exercise. Bodyweight exercises can be just as effective as gym workouts for releasing mood-boosting endorphins and reducing stress. The privacy of home exercise helps those with social anxiety or body image concerns, while the flexibility allows you to maintain consistency even with busy schedules. Regular home workouts build discipline, self-reliance, and provide immediate stress relief whenever needed.</p>
+            </div>
+        </section>
+
+        <section class="workout-exercises">
+            <div class="container">
+                <h3>Home Exercises</h3>
+                <div class="exercise-grid" id="homeExercises">
+                </div>
+            </div>
+        </section>
+
+        <section class="video-player" id="videoSection" style="display: none;">
+            <div class="container">
+                <h3 id="exerciseName">Exercise</h3>
+                <div class="video-container">
+                    <video id="exerciseVideo" controls>
+                        <source src="" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+                <button class="btn btn-secondary" onclick="closeVideo()">Close</button>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const homeExercises = [
+            {
+                name: "Push-ups",
+                image: "/static/images/pushups.jpg",
+                videoUrl: "path/to/pushups.mp4"
+            },
+            {
+                name: "Bodyweight Squats",
+                image: "/static/images/squats.jpg",
+                videoUrl: "path/to/squats.mp4"
+            },
+            {
+                name: "Plank Hold",
+                image: "/static/images/plank.jpg",
+                videoUrl: "path/to/plank.mp4"
+            },
+            {
+                name: "Burpees",
+                image: "/static/images/burpees.jpg",
+                videoUrl: "path/to/burpees.mp4"
+            },
+            {
+                name: "Lunges",
+                image: "/static/images/lunges.jpg",
+                videoUrl: "path/to/lunges.mp4"
+            },
+            {
+                name: "Mountain Climbers",
+                image: "/static/images/climbers.jpg",
+                videoUrl: "path/to/mountain-climbers.mp4"
+            },
+            {
+                name: "Jumping Jacks",
+                image: "/static/images/jacks.jpg",
+                videoUrl: "path/to/jumping-jacks.mp4"
+            },
+            {
+                name: "Wall Sit",
+                image: "/static/images/wall.jpg",
+                videoUrl: "path/to/wall-sit.mp4"
+            }
+        ];
+
+        function loadHomeExercises() {
+            const container = document.getElementById('homeExercises');
+            container.innerHTML = '';
+            
+            homeExercises.forEach(exercise => {
+                const exerciseCard = document.createElement('div');
+                exerciseCard.className = 'exercise-card';
+                exerciseCard.innerHTML = `
+                    <div class="exercise-image">
+                        <img src="${exercise.image}" alt="${exercise.name}">
+                    </div>
+                    <h4>${exercise.name}</h4>
+                    <button class="btn btn-primary" onclick="showExerciseVideo('${exercise.name}', '${exercise.videoUrl}')">
+                        Watch Video
+                    </button>
+                `;
+                container.appendChild(exerciseCard);
+            });
+        }
+
+        function showExerciseVideo(exerciseName, videoUrl) {
+            document.getElementById('exerciseName').textContent = exerciseName;
+            document.getElementById('exerciseVideo').src = videoUrl;
+            document.getElementById('videoSection').style.display = 'block';
+            document.getElementById('videoSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function closeVideo() {
+            document.getElementById('videoSection').style.display = 'none';
+            document.getElementById('exerciseVideo').pause();
+        }
+
+        document.addEventListener('DOMContentLoaded', loadHomeExercises);
+    </script>
+</body>
+</html>

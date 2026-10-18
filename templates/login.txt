@@ -1,0 +1,48 @@
+// static/login.js
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+
+// Your Firebase config
+const firebaseConfig = {
+  // your config
+   
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+// Login form logic
+document.addEventListener("DOMContentLoaded", () => {
+  const loginForm = document.getElementById("login-form");
+  const errorMsg = document.getElementById("error-msg");
+  const emailInput = document.getElementById("email");
+  const passwordInput = document.getElementById("password");
+
+  loginForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    
+    // Clear any previous error
+    errorMsg.classList.remove('show');
+
+    const email = loginForm.email.value;
+    const password = loginForm.password.value;
+
+    signInWithEmailAndPassword(auth, email, password)
+      .then((userCredential) => {
+        // Login successful
+        window.location.href = "/dashboard";
+      })
+      .catch((error) => {
+        errorMsg.textContent = error.message;
+        errorMsg.classList.add('show'); // This makes it visible!
+      });
+  });
+
+  // Clear error message when user starts typing
+  [emailInput, passwordInput].forEach(input => {
+    input.addEventListener('input', () => {
+      errorMsg.classList.remove('show');
+    });
+  });
+});

@@ -1,0 +1,48 @@
+// static/signup.js
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+
+// Your Firebase config
+const firebaseConfig = {
+    
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+// Signup form logic
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("signup-form");
+  const errorMsg = document.getElementById("error-msg"); // Changed from "signup-error" to "error-msg"
+  const emailInput = document.getElementById("signup-email");
+  const passwordInput = document.getElementById("signup-password");
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    
+    // Clear any previous error
+    errorMsg.classList.remove('show');
+
+    const email = emailInput.value;
+    const password = passwordInput.value;
+
+    createUserWithEmailAndPassword(auth, email, password)
+      .then((userCredential) => {
+        alert("Signup successful!");
+        window.location.href = "/login.html";
+      })
+      .catch((error) => {
+        errorMsg.textContent = error.message;
+        errorMsg.classList.add('show'); // This makes it visible!
+      });
+  });
+
+  // Clear error message when user starts typing
+  [emailInput, passwordInput].forEach(input => {
+    input.addEventListener('input', () => {
+      errorMsg.classList.remove('show');
+    });
+  });
+});

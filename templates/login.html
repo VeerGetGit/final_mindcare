@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login - MindCare</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/login.css" />
+  <link rel="icon" href="/static/images/favicon.ico" type="image/x-icon" />
+</head>
+<body>
+  <div class="login-container">
+    <h2>Login to <span>MindCare</span></h2>
+    
+    <form id="login-form">
+      <div class="input-group">
+        <input type="email" id="email" name="email" placeholder="Enter your email" required />
+        <label for="email">Email</label>
+      </div>
+
+      <div class="input-group">
+        <input type="password" id="password" name="password" placeholder="Enter your password" required />
+        <label for="password">Password</label>
+      </div>
+
+      <button type="submit">Login</button>
+    </form>
+    
+    <div id="error-msg"></div>
+    
+    <div class="signup-link">
+      Don't have an account? <a href="/signup">Sign Up</a>
+    </div>
+  </div>
+
+  <!-- Modular Firebase Login Script -->
+  <script type="module" src="/static/login.js"></script>
+</body>
+</html>

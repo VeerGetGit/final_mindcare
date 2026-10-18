@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gym Workout for Mental Health</title>
+    <link rel="stylesheet" href="/static/activity.css">
+</head>
+<body>
+    <main class="main">
+        <section class="page-hero">
+            <div class="container">
+                <h2>Gym Workout for Mental Health</h2>
+                <p>Advanced strength training for mental wellness</p>
+            </div>
+        </section>
+
+        <section class="workout-benefits">
+            <div class="container">
+                <h3>Why Gym Training Enhances Mental Health</h3>
+                <p>Gym workouts with weights and machines provide structured, progressive challenges that build not just physical strength but mental resilience. Resistance training increases growth factors that support brain health, improves self-efficacy through measurable progress, and provides a focused environment that promotes mindfulness. The discipline required for consistent gym training develops mental toughness and stress management skills that transfer to daily life challenges.</p>
+            </div>
+        </section>
+
+        <section class="workout-exercises">
+            <div class="container">
+                <h3>Gym Exercises</h3>
+                <div class="exercise-grid" id="gymExercises">
+                </div>
+            </div>
+        </section>
+
+        <section class="video-player" id="videoSection" style="display: none;">
+            <div class="container">
+                <h3 id="exerciseName">Exercise</h3>
+                <div class="video-container">
+                    <video id="exerciseVideo" controls>
+                        <source src="" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+                <button class="btn btn-secondary" onclick="closeVideo()">Close</button>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const gymExercises = [
+            {
+                name: "Bench Press",
+                image: "/static/images/benchpress.jpg",
+                videoUrl: "path/to/bench-press.mp4"
+            },
+            {
+                name: "Deadlift",
+                image: "/static/images/deadlift.jpg",
+                videoUrl: "path/to/deadlift.mp4"
+            },
+            {
+                name: "Barbell Squats",
+                image: "/static/images/barbellsquats.jpg",
+                videoUrl: "path/to/barbell-squats.mp4"
+            },
+            {
+                name: "Pull-ups",
+                image: "/static/images/pullups.jpg",
+                videoUrl: "path/to/pullups.mp4"
+            },
+            {
+                name: "Shoulder Press",
+                image: "/static/images/shoulderpress.jpg",
+                videoUrl: "path/to/shoulder-press.mp4"
+            },
+            {
+                name: "Lat Pulldown",
+                image: "/static/images/latpulldown.jpg",
+                videoUrl: "path/to/lat-pulldown.mp4"
+            },
+            {
+                name: "Leg Press",
+                image: "/static/images/legpress.jpg",
+                videoUrl: "path/to/leg-press.mp4"
+            },
+            {
+                name: "Cable Rows",
+                image: "/static/images/cablerows.jpg",
+                videoUrl: "path/to/cable-rows.mp4"
+            }
+        ];
+
+        function loadGymExercises() {
+            const container = document.getElementById('gymExercises');
+            container.innerHTML = '';
+            
+            gymExercises.forEach(exercise => {
+                const exerciseCard = document.createElement('div');
+                exerciseCard.className = 'exercise-card';
+                exerciseCard.innerHTML = `
+                    <div class="exercise-image">
+                        <img src="${exercise.image}" alt="${exercise.name}">
+                    </div>
+                    <h4>${exercise.name}</h4>
+                    <button class="btn btn-primary" onclick="showExerciseVideo('${exercise.name}', '${exercise.videoUrl}')">
+                        Watch Video
+                    </button>
+                `;
+                container.appendChild(exerciseCard);
+            });
+        }
+
+        function showExerciseVideo(exerciseName, videoUrl) {
+            document.getElementById('exerciseName').textContent = exerciseName;
+            document.getElementById('exerciseVideo').src = videoUrl;
+            document.getElementById('videoSection').style.display = 'block';
+            document.getElementById('videoSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function closeVideo() {
+            document.getElementById('videoSection').style.display = 'none';
+            document.getElementById('exerciseVideo').pause();
+        }
+
+        document.addEventListener('DOMContentLoaded', loadGymExercises);
+    </script>
+</body>
+</html>

@@ -1,0 +1,463 @@
+ apiKey: "AIzaSyCl8Z4reasqvd9eGXoB6z_MDOuze7yoUwY",
+    authDomain: "mental-health-d6596.firebaseapp.com",
+    projectId: "mental-health-d6596",
+    storageBucket: "mental-health-d6596.firebasestorage.app",
+    messagingSenderId: "827190774187",
+    appId: "1:827190774187:web:1450ed5c595532c7076aee"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  try {
+    console.log('Loading habit streak for user:', currentUser.uid);
+
+    // Try Firestore first
+    const streakRef = doc(db, "users", currentUser.uid, "profile", "streak");
+    const streakSnap = await getDoc(streakRef);
+
+    if (streakSnap.exists()) {
+      habitStreak = streakSnap.data().currentStreak || 0;
+      console.log('Loaded streak from Firestore:', habitStreak);
+    } else {
+      console.log('No streak found in Firestore, starting fresh');
+      habitStreak = 0;
+    }
+
+    // Update display
+    if (currentStreakEl) {
+      currentStreakEl.textContent = habitStreak;
+    }
+
+  } catch (error) {
+    console.error('Error loading habit streak:', error);
+    habitStreak = 0;
+    if (currentStreakEl) {
+      currentStreakEl.textContent = '0';
+    }
+  }
+}
+
+// Update habit streak
+async function updateHabitStreak() {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Check if today's streak was already counted
+    let streakData = null;
+    try {
+      const streakRef = doc(db, "users", currentUser.uid, "profile", "streak");
+      const streakSnap = await getDoc(streakRef);
+
+      if (streakSnap.exists()) {
+        streakData = streakSnap.data();
+        if (streakData.lastUpdated === today) {
+          console.log('Streak already updated today');
+          return;
+        }
+      }
+    } catch (error) {
+      console.warn('Could not check existing streak data');
+    }
+
+    let newStreak = 1;
+    let streakBroken = false;
+    let daysMissed = 0;
+    let previousStreak = streakData?.currentStreak || 0;
+
+    // Only use daysDifference logic if we have previous streak data
+    if (streakData && streakData.lastUpdated) {
+      const lastUpdateDate = new Date(streakData.lastUpdated);
+      const todayDate = new Date(today);
+      const daysDifference = Math.floor((todayDate - lastUpdateDate) / (24 * 60 * 60 * 1000));
+
+      console.log('Days difference:', daysDifference); // Debug log
+
+      if (daysDifference === 1) {
+        newStreak = previousStreak + 1;
+      } else if (daysDifference > 1) {
+        streakBroken = true;
+        daysMissed = daysDifference - 1;
+        newStreak = 1;
+      }
+      // If daysDifference === 0, it means same day (shouldn't happen due to early return)
+    }
+    // If no previous streak data, newStreak stays 1
+
+    habitStreak = newStreak;
+
+    // Save to database
+    try {
+      const streakRef = doc(db, "users", currentUser.uid, "profile", "streak");
+      await setDoc(streakRef, {
+        currentStreak: habitStreak,
+        lastUpdated: today,
+        updatedAt: Timestamp.now(),
+        totalDaysCompleted: (streakData?.totalDaysCompleted || 0) + 1
+      }, { merge: true });
+    } catch (firestoreError) {
+      localStorage.setItem(`habitStreak_${currentUser.uid}`, habitStreak.toString());
+      localStorage.setItem(`habitStreakDate_${currentUser.uid}`, today);
+    }
+
+    // Update display
+    if (currentStreakEl) {
+      currentStreakEl.textContent = habitStreak;
+    }
+
+    // Show messages
+    if (streakBroken && previousStreak > 0) {
+  if (daysMissed === 1) {
+    showNotification(`💔 Your ${previousStreak}-day streak was broken by missing yesterday. Starting fresh with day 1! 💪`, 'warning');
+  } else {
+    showNotification(`💔 Your ${previousStreak}-day streak was broken after missing ${daysMissed} days. Back to day 1 - you've got this! 🌟`, 'warning');
+  }
+} else if (habitStreak % 7 === 0 && habitStreak > 0) {
+  showNotification(`🎉 ${habitStreak} day streak! Amazing consistency!`, 'success');
+} else if (habitStreak > 1) {
+  showNotification(`🔥 ${habitStreak} day streak!`, 'success');
+} else {
+  showNotification(`🌟 Great job completing all habits today!`, 'success');
+}
+
+  } catch (error) {
+    console.error('Error updating habit streak:', error);
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+async function loadHabitStreak() {
+  try {
+    console.log('Loading habit streak for user:', currentUser.uid);
+
+    const streakRef = doc(db, "users", currentUser.uid, "profile", "streak");
+    const streakSnap = await getDoc(streakRef);
+
+    const today = new Date().toISOString().split('T')[0];
+    let lastNotifiedDate = null;
+
+    if (streakSnap.exists()) {
+      const data = streakSnap.data();
+      habitStreak = data.currentStreak || 0;
+      lastNotifiedDate = data.lastNotifiedDate || null;
+      console.log('Loaded streak from Firestore:', habitStreak);
+
+      // NEW: Check for missed days and reset streak if needed
+      const streakCheckResult = await checkAndResetStreakIfNeeded(data);
+      
+      if (streakCheckResult.shouldNotify && lastNotifiedDate !== today) {
+        showMissedDaysModal(streakCheckResult.daysMissed, streakCheckResult.lastCompletedDate);
+        
+        // Mark that we've notified the user today
+        await setDoc(streakRef, {
+          ...data,
+          currentStreak: streakCheckResult.newStreak,
+          lastNotifiedDate: today,
+          updatedAt: Timestamp.now()
+        }, { merge: true });
+        
+        habitStreak = streakCheckResult.newStreak;
+      }
+    } else {
+      console.log('No streak found in Firestore, starting fresh');
+      habitStreak = 0;
+    }
+
+    if (currentStreakEl) {
+      currentStreakEl.textContent = habitStreak;
+    }
+
+  } catch (error) {
+    console.error('Error loading habit streak:', error);
+    habitStreak = 0;
+    if (currentStreakEl) {
+      currentStreakEl.textContent = '0';
+    }
+  }
+}
+
+// NEW: Check if streak should be reset based on actual completion history
+async function checkAndResetStreakIfNeeded(streakData) {
+  const today = new Date().toISOString().split('T')[0];
+  const currentStreak = streakData.currentStreak || 0;
+  
+  if (currentStreak === 0) {
+    return { shouldNotify: false, newStreak: 0 };
+  }
+
+  // Find the last day when all habits were actually completed
+  let lastCompletedDate = null;
+  let daysMissed = 0;
+  
+  // Check backwards from yesterday to find the actual last completion
+  for (let i = 1; i <= currentStreak + 7; i++) { // Check a reasonable range
+    const checkDate = new Date(Date.now() - (i * 24 * 60 * 60 * 1000)).toISOString().split('T')[0];
+    
+    try {
+      const habitsRef = doc(db, "users", currentUser.uid, "habits", checkDate);
+      const habitsSnap = await getDoc(habitsRef);
+      
+      if (habitsSnap.exists()) {
+        const dayHabits = habitsSnap.data().habits || {};
+        const allCompleted = Object.values(dayHabits).every(habit => habit.completed);
+        
+        if (allCompleted) {
+          lastCompletedDate = checkDate;
+          daysMissed = i - 1; // Days between last completion and today
+          break;
+        }
+      }
+    } catch (error) {
+      console.warn(`Could not check habits for ${checkDate}`);
+    }
+  }
+
+  // If we found a gap in completions
+  if (lastCompletedDate) {
+    const lastCompletedDateObj = new Date(lastCompletedDate);
+    const todayObj = new Date(today);
+    const actualDaysMissed = Math.floor((todayObj - lastCompletedDateObj) / (24 * 60 * 60 * 1000)) - 1;
+    
+    if (actualDaysMissed > 0) {
+      return {
+        shouldNotify: true,
+        daysMissed: actualDaysMissed,
+        lastCompletedDate: lastCompletedDate,
+        newStreak: 0 // Reset streak to 0
+      };
+    }
+  }
+
+  return { shouldNotify: false, newStreak: currentStreak };
+}
+
+// FIXED: Update habit streak with proper streak calculation
+async function updateHabitStreak() {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Check if today's streak was already counted
+    let streakData = null;
+    const streakRef = doc(db, "users", currentUser.uid, "profile", "streak");
+    
+    try {
+      const streakSnap = await getDoc(streakRef);
+      if (streakSnap.exists()) {
+        streakData = streakSnap.data();
+
+        // If already updated today, don't update again
+        if (streakData.lastUpdated === today) {
+          console.log('Streak already updated today');
+          return;
+        }
+      }
+    } catch (error) {
+      console.warn('Could not check existing streak data');
+    }
+
+    // Calculate the new streak properly
+    const newStreakData = await calculateNewStreak(streakData, today);
+    habitStreak = newStreakData.newStreak;
+
+    // Save to database
+    try {
+      const updateData = {
+        currentStreak: habitStreak,
+        lastUpdated: today,
+        lastCompletedDate: today, // NEW: Track last completion date
+        updatedAt: Timestamp.now(),
+        totalDaysCompleted: (streakData?.totalDaysCompleted || 0) + 1
+      };
+
+      // Keep existing lastNotifiedDate if it exists
+      if (streakData?.lastNotifiedDate) {
+        updateData.lastNotifiedDate = streakData.lastNotifiedDate;
+      }
+
+      await setDoc(streakRef, updateData, { merge: true });
+      console.log('Streak updated successfully:', habitStreak);
+    } catch (firestoreError) {
+      // Fallback to localStorage
+      localStorage.setItem(`habitStreak_${currentUser.uid}`, habitStreak.toString());
+      localStorage.setItem(`habitStreakDate_${currentUser.uid}`, today);
+    }
+
+    // Update display
+    if (currentStreakEl) {
+      currentStreakEl.textContent = habitStreak;
+    }
+
+    // Show appropriate notification
+    if (newStreakData.wasReset) {
+      showNotification(`🔄 Streak reset due to missed day(s). Day 1 complete! 💪`, 'info');
+    } else if (habitStreak % 7 === 0 && habitStreak > 0) {
+      showNotification(`🎉 ${habitStreak} day streak! Amazing consistency!`, 'success');
+    } else if (habitStreak > 1) {
+      showNotification(`🔥 ${habitStreak} day streak!`, 'success');
+    } else {
+      showNotification(`🌟 Great job completing all habits today!`, 'success');
+    }
+
+  } catch (error) {
+    console.error('Error updating habit streak:', error);
+  }
+}
+
+// NEW: Calculate new streak based on actual completion history
+async function calculateNewStreak(streakData, today) {
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  let newStreak = 1; // Default to 1 for today
+  let wasReset = false;
+
+  if (!streakData) {
+    return { newStreak: 1, wasReset: false };
+  }
+
+  const currentStreak = streakData.currentStreak || 0;
+  
+  // Check if yesterday was completed
+  try {
+    const yesterdayRef = doc(db, "users", currentUser.uid, "habits", yesterday);
+    const yesterdaySnap = await getDoc(yesterdayRef);
+    
+    if (yesterdaySnap.exists()) {
+      const yesterdayHabits = yesterdaySnap.data().habits || {};
+      const yesterdayCompleted = Object.values(yesterdayHabits).every(habit => habit.completed);
+      
+      if (yesterdayCompleted) {
+        // Yesterday was completed, continue streak
+        newStreak = currentStreak + 1;
+      } else {
+        // Yesterday was not completed, reset streak
+        newStreak = 1;
+        wasReset = true;
+      }
+    } else {
+      // No data for yesterday means streak is broken
+      if (currentStreak > 0) {
+        wasReset = true;
+      }
+      newStreak = 1;
+    }
+  } catch (error) {
+    console.warn('Could not check yesterday completion, starting fresh');
+    newStreak = 1;
+  }
+
+  return { newStreak, wasReset };
+}
+
+// ENHANCED: Track incomplete days for better streak management
+async function updateHabit(habitType, value, completed) {
+  try {
+    // Store previous completion state for streak calculation
+    const wasAllCompleted = areAllHabitsCompleted();
+
+    // Update local state
+    currentHabits[habitType] = { value, completed };
+
+    // Update display immediately
+    updateHabitDisplay();
+    updateHabitProgress();
+
+    const today = new Date().toISOString().split('T')[0];
+
+    console.log('Saving habit to Firestore:', { habitType, value, completed, today });
+
+    try {
+      // Save the specific habit
+      const habitRef = doc(db, "users", currentUser.uid, "habitEntries", `${today}_${habitType}`);
+      await setDoc(habitRef, {
+        type: habitType,
+        value: value,
+        completed: completed,
+        date: today,
+        updatedAt: Timestamp.now(),
+        userId: currentUser.uid
+      });
+
+      // Also save the complete habits summary
+      const summaryRef = doc(db, "users", currentUser.uid, "habits", today);
+      await setDoc(summaryRef, {
+        habits: currentHabits,
+        date: today,
+        allCompleted: areAllHabitsCompleted(), // NEW: Track if all habits are completed
+        updatedAt: Timestamp.now(),
+        userId: currentUser.uid
+      }, { merge: true });
+
+      console.log('Successfully saved to Firestore');
+
+    } catch (firestoreError) {
+      console.error('Firestore save failed:', firestoreError);
+      showMessage('Failed to save to cloud, using local storage', 'error');
+
+      // Fallback to localStorage
+      const habitData = JSON.parse(localStorage.getItem(`habits_${currentUser.uid}`) || '{}');
+      habitData[today] = { habits: currentHabits, allCompleted: areAllHabitsCompleted() };
+      localStorage.setItem(`habits_${currentUser.uid}`, JSON.stringify(habitData));
+    }
+
+    // Only update streak when ALL habits are completed AND it wasn't completed before
+    const isNowAllCompleted = areAllHabitsCompleted();
+    if (isNowAllCompleted && !wasAllCompleted) {
+      console.log('All habits completed for the first time today - updating streak');
+      await updateHabitStreak();
+    }
+
+    // Add completion animation
+    if (completed) {
+      addHabitCompletionAnimation(habitType);
+    }
+
+  } catch (error) {
+    console.error('Error updating habit:', error);
+    showMessage('Error saving habit progress', 'error');
+  }
+}
