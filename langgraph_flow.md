@@ -6,7 +6,7 @@ flowchart TD
 
     B -->|simple| C[SIMPLE_RESPONSES dict]
     B -->|platform| D[get_mindcare_info tool]
-    B -->|crisis| E[flag_crisis_message + get_crisis_resources]
+    B -->|crisis| E["flag_crisis_message → therapist_cases (urgent)"]
     B -->|agent| F[LangGraph ReAct Agent]
 
     C --> Z[Return Response - No API Call]
