@@ -4,3 +4,4 @@ __pycache__/
 myenv/
 venv/
 static/firebaseadminsdk.json
+static/images/static/firebaseadminsdk.json
