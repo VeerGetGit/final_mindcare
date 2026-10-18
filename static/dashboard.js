@@ -2238,16 +2238,18 @@ async function sendChatMessage() {
     if (!res.ok) throw new Error(data.error || 'Request failed');
 
     appendMessage('bot', data.response);
+    saveChatMessages(user.uid, message, data.response);
     if (data.flagged) {
       document.getElementById('chatbot-banner').style.display = 'block';
       // Server had no Firestore credentials; persist the review from the signed-in client.
-      if (data.review) {
+      if (!data.saved && data.review) {
         try {
           await addDoc(collection(db, 'pending_reviews'), { ...data.review, timestamp: serverTimestamp() });
         } catch (error) {
           console.error('Error saving pending review:', error);
         }
       }
+      await createChatbotFlagCase(user, message, data.review ? data.review.ai_response : '');
     }
   } catch (error) {
     console.error('Chatbot error:', error);
@@ -2409,6 +2411,23 @@ async function submitBooking(event) {
       timestamp: new Date(),
       status: 'pending'
     });
+    try {
+      await addDoc(collection(db, 'therapist_cases'), {
+        therapist_id: selectedTherapist.id,
+        therapist_name: selectedTherapist.id === 'any' ? 'First Available' : selectedTherapist.name,
+        patient_id: user.uid,
+        patient_name: user.displayName || '',
+        patient_email: user.email || '',
+        type: 'booking',
+        source: 'manual_booking',
+        timeslot,
+        problem: notes,
+        status: 'new',
+        timestamp: new Date()
+      });
+    } catch (error) {
+      console.error('Error creating therapist case:', error);
+    }
     document.getElementById('booking-form').reset();
     document.getElementById('booking-form').style.display = 'none';
     document.getElementById('booking-success').style.display = 'block';
@@ -2417,6 +2436,38 @@ async function submitBooking(event) {
     alert('Could not book the session. Please try again.');
   } finally {
     submitBtn.disabled = false;
+  }
+}
+
+// ── Therapist case management ────────────────────────────────────
+
+async function createChatbotFlagCase(user, triggerMessage, aiResponse) {
+  try {
+    await addDoc(collection(db, 'therapist_cases'), {
+      therapist_id: 'any',
+      patient_id: user.uid,
+      patient_name: user.displayName || '',
+      patient_email: user.email || '',
+      type: 'chatbot_flag',
+      source: 'chatbot',
+      trigger_message: triggerMessage,
+      ai_response: aiResponse,
+      status: 'new',
+      timestamp: new Date()
+    });
+  } catch (error) {
+    console.error('Error creating chatbot flag case:', error);
+  }
+}
+
+// Stored so therapists can view a patient's recent chat history.
+async function saveChatMessages(uid, userText, botText) {
+  try {
+    const now = Date.now();
+    await addDoc(collection(db, 'chat_messages'), { user_id: uid, role: 'user', text: userText, timestamp: new Date(now) });
+    await addDoc(collection(db, 'chat_messages'), { user_id: uid, role: 'bot', text: botText, timestamp: new Date(now + 1) });
+  } catch (error) {
+    console.error('Error saving chat messages:', error);
   }
 }
 

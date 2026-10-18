@@ -311,6 +311,65 @@ def list_therapists():
         return jsonify({"error": "Could not load therapists."}), 500
 
 
+def _serialize(value):
+    """Make Firestore values (timestamps etc.) JSON-safe."""
+    if isinstance(value, dict):
+        return {k: _serialize(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_serialize(v) for v in value]
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return value
+
+
+def _sort_key(item):
+    return item.get("timestamp") or ""
+
+
+@app.route('/api/patient/chat-summary/<user_id>')
+def patient_chat_summary(user_id):
+    fs = _get_firestore()
+    if fs is None:
+        return jsonify({"error": "Firestore is not configured on the server."}), 503
+    try:
+        coll = fs.collection("chat_messages").where("user_id", "==", user_id)
+        try:
+            from firebase_admin import firestore
+            docs = coll.order_by("timestamp", direction=firestore.Query.DESCENDING).limit(10).stream()
+            messages = [_serialize(d.to_dict()) for d in docs]
+        except Exception:
+            # The ordered query needs a composite index; fall back to sorting here.
+            messages = sorted((_serialize(d.to_dict()) for d in coll.stream()), key=_sort_key, reverse=True)[:10]
+
+        if not messages:
+            return jsonify({"summary": "No chat history available", "messages": []})
+
+        patient_msgs = [m for m in messages if m.get("role") == "user"]
+        topics = "; ".join((m.get("text") or "")[:60] for m in patient_msgs[:3]) or "n/a"
+        summary = f"Patient has had {len(patient_msgs)} conversations. Recent topics: {topics}"
+        return jsonify({"summary": summary, "messages": messages})
+    except Exception as e:
+        print(f"❌ Error building chat summary: {e}")
+        return jsonify({"error": "Could not load chat history."}), 500
+
+
+@app.route('/api/therapist/cases/<therapist_id>')
+def therapist_cases(therapist_id):
+    fs = _get_firestore()
+    if fs is None:
+        return jsonify({"error": "Firestore is not configured on the server."}), 503
+    try:
+        cases = []
+        for tid in {therapist_id, "any"}:
+            for doc in fs.collection("therapist_cases").where("therapist_id", "==", tid).stream():
+                cases.append({"id": doc.id, **_serialize(doc.to_dict())})
+        cases.sort(key=_sort_key, reverse=True)
+        return jsonify(cases)
+    except Exception as e:
+        print(f"❌ Error fetching cases: {e}")
+        return jsonify({"error": "Could not load cases."}), 500
+
+
 @app.route('/api/patient/chat', methods=['POST'])
 def patient_chat():
     try:
@@ -349,9 +408,9 @@ def patient_chat():
                 result["saved"] = True
             except Exception as e:
                 print(f"❌ Failed to save pending review: {e}")
-        if not result["saved"]:
-            # No server credentials: let the signed-in client persist it instead.
-            result["review"] = review
+        # The signed-in client uses this to file the therapist case (and the review
+        # itself when the server has no Firestore credentials).
+        result["review"] = review
         return jsonify(result)
 
     except Exception as e:

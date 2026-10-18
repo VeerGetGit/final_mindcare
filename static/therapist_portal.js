@@ -3,7 +3,7 @@ import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/fi
 import {
   getFirestore, doc, collection,
   addDoc, getDoc, getDocs, updateDoc, deleteDoc,
-  query, orderBy, serverTimestamp
+  query, orderBy, where, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -418,3 +418,179 @@ function showToast(msg, type = "") {
   t.style.display = "block";
   setTimeout(() => { t.style.display = "none"; }, 3000);
 }
+
+// ── MY CASES ──────────────────────────────────────────────────────────────────
+const casesView = document.getElementById("tp-cases-view");
+
+document.getElementById("tp-cases-btn").addEventListener("click", () => {
+  const opening = casesView.style.display === "none";
+  casesView.style.display = opening ? "block" : "none";
+  // Hide/restore the existing patient views while the cases panel is open
+  const empty = document.getElementById("tp-empty-state");
+  const chatView = document.getElementById("tp-chat-view");
+  if (opening) {
+    empty.style.display = "none";
+    chatView.style.display = "none";
+    loadCases();
+  } else {
+    empty.style.display = currentPatientId ? "none" : "";
+    chatView.style.display = currentPatientId ? "block" : "none";
+  }
+});
+
+function showCasesTab(which) {
+  const bookings = which === "bookings";
+  document.getElementById("cases-bookings").style.display = bookings ? "flex" : "none";
+  document.getElementById("cases-alerts").style.display = bookings ? "none" : "flex";
+  document.getElementById("cases-tab-bookings").classList.toggle("active", bookings);
+  document.getElementById("cases-tab-alerts").classList.toggle("active", !bookings);
+}
+document.getElementById("cases-tab-bookings").addEventListener("click", () => showCasesTab("bookings"));
+document.getElementById("cases-tab-alerts").addEventListener("click", () => showCasesTab("alerts"));
+
+function caseTime(c) {
+  const t = c.timestamp;
+  return t && t.toDate ? t.toDate() : (t ? new Date(t) : null);
+}
+
+async function fetchCases(type) {
+  // "any" = unassigned; any therapist can pick these up
+  const snap = await getDocs(query(
+    collection(db, "therapist_cases"),
+    where("type", "==", type),
+    where("therapist_id", "in", [currentTherapistId, "any"])
+  ));
+  const cases = [];
+  snap.forEach(d => cases.push({ id: d.id, ...d.data() }));
+  cases.sort((a, b) => (caseTime(b) || 0) - (caseTime(a) || 0));
+  return cases;
+}
+
+async function loadCases() {
+  const bookingsEl = document.getElementById("cases-bookings");
+  const alertsEl = document.getElementById("cases-alerts");
+  bookingsEl.textContent = alertsEl.textContent = "Loading...";
+  try {
+    renderCases(bookingsEl, await fetchCases("booking"), "booking");
+    renderCases(alertsEl, await fetchCases("chatbot_flag"), "chatbot_flag");
+  } catch (e) {
+    console.error("Error loading cases:", e);
+    bookingsEl.textContent = alertsEl.textContent = "Error loading cases.";
+  }
+}
+
+function addLine(parent, label, text) {
+  const row = document.createElement("div");
+  row.className = "tp-case-row";
+  const b = document.createElement("strong");
+  b.textContent = label + ": ";
+  row.appendChild(b);
+  row.appendChild(document.createTextNode(text || "—"));
+  parent.appendChild(row);
+}
+
+function renderCases(container, cases, type) {
+  container.textContent = "";
+  if (!cases.length) {
+    container.textContent = type === "booking" ? "No session bookings yet." : "No chatbot alerts.";
+    return;
+  }
+  cases.forEach(c => {
+    const card = document.createElement("div");
+    card.className = "tp-case-card";
+
+    const status = c.status || "new";
+    const badge = document.createElement("span");
+    badge.className = "tp-status-badge " + status;
+    badge.textContent = status;
+    card.appendChild(badge);
+
+    const name = document.createElement("h4");
+    name.textContent = c.patient_name || "Unknown patient";
+    card.appendChild(name);
+
+    const when = caseTime(c);
+    const meta = document.createElement("div");
+    meta.className = "tp-case-meta";
+    meta.textContent = [type === "booking" ? c.patient_email : null, when ? when.toLocaleString() : null].filter(Boolean).join(" • ");
+    card.appendChild(meta);
+
+    if (type === "booking") {
+      addLine(card, "Time slot", c.timeslot);
+      addLine(card, "Problem", c.problem);
+    } else {
+      addLine(card, "Triggering message", c.trigger_message);
+      addLine(card, "AI responded", c.ai_response);
+    }
+
+    const actions = document.createElement("div");
+    actions.className = "tp-case-actions";
+    const histBtn = document.createElement("button");
+    histBtn.className = "tp-btn tp-btn-outline";
+    histBtn.textContent = "View Chat History";
+    histBtn.addEventListener("click", () => showChatHistory(c.patient_id));
+    actions.appendChild(histBtn);
+
+    if (type === "chatbot_flag" && status === "new") {
+      const reviewBtn = document.createElement("button");
+      reviewBtn.className = "tp-btn tp-btn-primary";
+      reviewBtn.textContent = "Mark Reviewed";
+      reviewBtn.addEventListener("click", async () => {
+        try {
+          await updateDoc(doc(db, "therapist_cases", c.id), { status: "reviewed" });
+          badge.className = "tp-status-badge reviewed";
+          badge.textContent = "reviewed";
+          reviewBtn.remove();
+        } catch (e) {
+          showToast("Error: " + e.message, "error");
+        }
+      });
+      actions.appendChild(reviewBtn);
+    }
+    card.appendChild(actions);
+    container.appendChild(card);
+  });
+}
+
+async function showChatHistory(patientId) {
+  const modal = document.getElementById("chat-history-modal");
+  const body = document.getElementById("chat-history-body");
+  body.textContent = "Loading...";
+  modal.style.display = "flex";
+  try {
+    let data;
+    const res = await fetch("/api/patient/chat-summary/" + encodeURIComponent(patientId));
+    if (res.ok) {
+      data = await res.json();
+    } else {
+      // Server has no Firestore access; read directly (rules allow signed-in users).
+      const snap = await getDocs(query(collection(db, "chat_messages"), where("user_id", "==", patientId)));
+      const msgs = [];
+      snap.forEach(d => msgs.push(d.data()));
+      msgs.sort((a, b) => (caseTime(b) || 0) - (caseTime(a) || 0));
+      const recent = msgs.slice(0, 10);
+      const userMsgs = recent.filter(m => m.role === "user");
+      data = recent.length
+        ? { summary: `Patient has had ${userMsgs.length} conversations. Recent topics: ${userMsgs.slice(0, 3).map(m => (m.text || "").slice(0, 60)).join("; ") || "n/a"}`, messages: recent }
+        : { summary: "No chat history available", messages: [] };
+    }
+    body.textContent = "";
+    const summary = document.createElement("p");
+    summary.textContent = data.summary;
+    body.appendChild(summary);
+    // Messages are newest first; show oldest first
+    [...data.messages].reverse().forEach(m => {
+      const line = document.createElement("div");
+      line.className = "tp-chat-line " + (m.role === "user" ? "user" : "bot");
+      line.textContent = (m.role === "user" ? "Patient: " : "MindCare: ") + (m.text || "");
+      body.appendChild(line);
+    });
+  } catch (e) {
+    console.error("Error loading chat history:", e);
+    body.textContent = "Could not load chat history.";
+  }
+}
+
+document.getElementById("close-chat-history-modal").addEventListener("click", () => {
+  document.getElementById("chat-history-modal").style.display = "none";
+});

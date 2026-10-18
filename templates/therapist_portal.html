@@ -18,6 +18,7 @@
       Welcome, Dr. <span id="tp-therapist-name">...</span>
     </div>
     <div class="tp-header-right">
+      <button id="tp-cases-btn" class="tp-btn tp-btn-outline">📋 My Cases</button>
       <button id="tp-logout-btn" class="tp-btn tp-btn-outline">Logout</button>
     </div>
   </header>
@@ -40,6 +41,17 @@
 
     <!-- MAIN -->
     <main class="tp-main">
+
+      <!-- MY CASES -->
+      <section id="tp-cases-view" style="display:none;">
+        <h2>📋 My Cases</h2>
+        <div class="tp-tabs">
+          <button class="tp-tab active" id="cases-tab-bookings">Session Bookings</button>
+          <button class="tp-tab" id="cases-tab-alerts">Chatbot Alerts</button>
+        </div>
+        <div id="cases-bookings" class="tp-cases-list"></div>
+        <div id="cases-alerts" class="tp-cases-list" style="display:none;"></div>
+      </section>
 
       <div id="tp-empty-state" class="tp-empty-state">
         <div class="tp-empty-icon">🩺</div>
@@ -152,6 +164,15 @@
       <button class="tp-modal-close" id="close-session-modal">&times;</button>
       <h3>Session Details</h3>
       <div id="session-modal-body" class="tp-session-detail"></div>
+    </div>
+  </div>
+
+  <!-- CHAT HISTORY MODAL -->
+  <div id="chat-history-modal" class="tp-modal" style="display:none;">
+    <div class="tp-modal-content tp-modal-large">
+      <button class="tp-modal-close" id="close-chat-history-modal">&times;</button>
+      <h3>Chat History</h3>
+      <div id="chat-history-body" class="tp-session-detail"></div>
     </div>
   </div>
 

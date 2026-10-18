@@ -269,3 +269,17 @@ body {
   .tp-layout { flex-direction: column; }
   .tp-overview-grid { grid-template-columns: 1fr 1fr; }
 }
+/* ── My Cases ── */
+.tp-cases-list { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
+.tp-case-card { background: var(--white); border-radius: 14px; padding: 16px 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+.tp-case-card h4 { margin: 0 0 4px; font-size: 16px; }
+.tp-case-meta { font-size: 13px; color: #777; margin-bottom: 8px; }
+.tp-case-row { font-size: 14px; margin: 4px 0; }
+.tp-case-actions { display: flex; gap: 8px; margin-top: 12px; }
+.tp-case-actions .tp-btn { padding: 8px 14px; font-size: 13px; }
+.tp-status-badge { float: right; padding: 2px 10px; border-radius: 10px; font-size: 12px; font-weight: 700; }
+.tp-status-badge.new { background: rgba(231,76,60,0.12); color: var(--danger); }
+.tp-status-badge.reviewed { background: rgba(243,156,18,0.12); color: #B7770D; }
+.tp-status-badge.completed { background: rgba(39,174,96,0.12); color: #1E8449; }
+.tp-chat-line { margin: 6px 0; padding: 6px 10px; border-radius: 8px; background: #f4f1fa; font-size: 14px; }
+.tp-chat-line.bot { background: #eef6ff; }
