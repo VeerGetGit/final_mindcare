@@ -2240,9 +2240,12 @@ async function sendChatMessage() {
     if (!res.ok) throw new Error(data.error || 'Request failed');
 
     appendMessage('bot', data.response);
-    saveChatMessages(user.uid, message, data.response);
+    // The agent route already stores messages and files crisis cases server-side.
+    if (!data.handled) saveChatMessages(user.uid, message, data.response);
     if (data.flagged) {
       document.getElementById('chatbot-banner').style.display = 'block';
+    }
+    if (data.flagged && !data.handled) {
       // Server had no Firestore credentials; persist the review from the signed-in client.
       if (!data.saved && data.review) {
         try {

@@ -457,7 +457,7 @@ async function fetchCases(type) {
   // "any" = unassigned; any therapist can pick these up
   const snap = await getDocs(query(
     collection(db, "therapist_cases"),
-    where("type", "==", type),
+    where("type", "in", type === "booking" ? ["booking", "chatbot_booking"] : [type]),
     where("therapist_id", "in", [currentTherapistId, "any"])
   ));
   const cases = [];
@@ -536,7 +536,7 @@ function renderCases(container, cases, type) {
     histBtn.addEventListener("click", () => showChatHistory(c));
     actions.appendChild(histBtn);
 
-    if (type === "chatbot_flag" && status === "new") {
+    if (type === "chatbot_flag" && (status === "new" || status === "urgent")) {
       const reviewBtn = document.createElement("button");
       reviewBtn.className = "tp-btn tp-btn-primary";
       reviewBtn.textContent = "Mark Reviewed";
