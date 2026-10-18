@@ -259,21 +259,39 @@ CHAT_FLAG_REGEX = re.compile(
 CHAT_FLAGGED_REPLY = "I hear you. A care team member will follow up with you shortly."
 
 
+_ADMIN_KEY_PATHS = [
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'firebaseadminsdk.json'),
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'images', 'static', 'firebaseadminsdk.json'),
+]
+
+
 def _get_firestore():
-    """Firestore via Admin SDK, or None if no credentials are configured."""
+    """Firestore via the Admin SDK, initialising it on first use.
+
+    Credentials come from FIREBASE_CREDENTIALS_JSON, GOOGLE_APPLICATION_CREDENTIALS,
+    or a local static/firebaseadminsdk.json. Returns None (and prints why) if none work.
+    """
     try:
         from firebase_admin import firestore
         if not firebase_admin._apps:
             cred_json = os.getenv('FIREBASE_CREDENTIALS_JSON')
+            key_file = next((p for p in _ADMIN_KEY_PATHS if os.path.isfile(p)), None)
             if cred_json:
                 firebase_admin.initialize_app(credentials.Certificate(json.loads(cred_json)))
             elif os.getenv('GOOGLE_APPLICATION_CREDENTIALS'):
                 firebase_admin.initialize_app()
+            elif key_file:
+                firebase_admin.initialize_app(credentials.Certificate(key_file))
             else:
+                print("❌ Firestore unavailable: no Admin SDK credentials found. Set "
+                      "FIREBASE_CREDENTIALS_JSON or GOOGLE_APPLICATION_CREDENTIALS, or add "
+                      "static/firebaseadminsdk.json")
                 return None
         return firestore.client()
-    except Exception as e:
-        print(f"❌ Firestore unavailable: {e}")
+    except Exception:
+        import traceback
+        print("❌ Firestore unavailable:")
+        traceback.print_exc()
         return None
 
 
@@ -292,9 +310,12 @@ def _therapist_status(t):
 
 @app.route('/api/therapists')
 def list_therapists():
+    # Always returns JSON with a "therapists" list; the client falls back to a
+    # direct Firestore read when the status is not 200.
     fs = _get_firestore()
     if fs is None:
-        return jsonify({"error": "Firestore is not configured on the server."}), 503
+        return jsonify({"therapists": [],
+                        "error": "Server has no Firebase Admin credentials; see server log."}), 503
     try:
         therapists = []
         for doc in fs.collection("therapists").stream():
@@ -306,9 +327,11 @@ def list_therapists():
                 "status": _therapist_status(t),
             })
         return jsonify(therapists)
-    except Exception as e:
-        print(f"❌ Error fetching therapists: {e}")
-        return jsonify({"error": "Could not load therapists."}), 500
+    except Exception:
+        import traceback
+        print("❌ Error fetching therapists:")
+        traceback.print_exc()
+        return jsonify({"therapists": [], "error": "Could not load therapists from Firestore."}), 500
 
 
 def _serialize(value):
