@@ -2,6 +2,7 @@
 import datetime
 import operator
 import os
+import time
 from typing import Annotated, Sequence, TypedDict
 
 from dotenv import load_dotenv
@@ -15,7 +16,34 @@ from firebase_db import get_firestore
 
 load_dotenv()
 
-AGENT_MODEL = os.getenv('MINDCARE_AGENT_MODEL', 'openai/gpt-oss-20b')
+SAFE_DEFAULT_MODEL = 'openai/gpt-oss-20b'
+
+
+def get_best_model():
+    """First preferred model that Groq currently serves.
+
+    Order: MINDCARE_AGENT_MODEL override, then fast/cheap models, then a known-good default.
+    The candidates are checked against Groq's live model list, because several older
+    models (e.g. llama3-8b-8192) have been decommissioned and would fail every request.
+    """
+    candidates = [
+        os.environ.get('MINDCARE_AGENT_MODEL'),  # user override first
+        'gemma2-9b-it',                          # fast, free tier friendly
+        'llama3-8b-8192',                        # fallback
+        'mixtral-8x7b-32768',                    # last resort
+        SAFE_DEFAULT_MODEL,
+    ]
+    candidates = [m for m in candidates if m]
+    try:
+        from groq import Groq
+        available = {m.id for m in Groq(api_key=os.getenv('GROQ_API_KEY')).models.list().data}
+        for m in candidates:
+            if m in available:
+                return m
+    except Exception as e:
+        print(f'WARNING: could not list Groq models ({e}); using {candidates[0]}')
+        return candidates[0] if os.environ.get('MINDCARE_AGENT_MODEL') else SAFE_DEFAULT_MODEL
+    return SAFE_DEFAULT_MODEL
 
 
 # ── Helpers ─────────────────────────────────────────────────────
@@ -102,9 +130,19 @@ MINDCARE_INFO = {
 }
 
 
+THERAPIST_CACHE_SECONDS = 300
+_therapist_cache = {"data": None, "timestamp": 0}
+
+
+INFO_ALIASES = {'exercise': 'workout', 'gym': 'workout', 'habit': 'habits',
+                'breath': 'breathing', 'meditat': 'meditation', 'journal': 'journal'}
+
+
 @tool
 def get_available_therapists() -> str:
     """List therapists who are currently available for booking, with name and specialization."""
+    if _therapist_cache["data"] is not None and time.time() - _therapist_cache["timestamp"] < THERAPIST_CACHE_SECONDS:
+        return _therapist_cache["data"]
     try:
         db = _require_db()
         lines = []
@@ -112,7 +150,9 @@ def get_available_therapists() -> str:
             t = d.to_dict() or {}
             if _status_of(t) == 'available':
                 lines.append(f"- {t.get('name', 'Therapist')} ({t.get('specialization') or 'general counselling'}) - available")
-        return '\n'.join(lines) if lines else 'No therapists are available right now. The patient can book a later slot from the dashboard.'
+        result = '\n'.join(lines) if lines else 'No therapists are available right now. The patient can book a later slot from the dashboard.'
+        _therapist_cache.update(data=result, timestamp=time.time())
+        return result
     except Exception as e:
         return f'Could not load therapists: {e}'
 
@@ -154,6 +194,9 @@ def get_mindcare_info(topic: str) -> str:
     for key, info in MINDCARE_INFO.items():
         if key in t or t in key:
             return info
+    for alias, key in INFO_ALIASES.items():
+        if alias in t:
+            return MINDCARE_INFO[key]
     return 'MindCare offers: ' + ', '.join(MINDCARE_INFO) + '. Ask about any of these.'
 
 
@@ -313,13 +356,60 @@ STRICT RULES:
 - If user books a session, confirm the details before calling book_therapy_session"""
 
 
+CRISIS_WORDS = ["suicide", "kill myself", "want to die", "end my life", "self harm", "self-harm",
+                "cut myself", "khatam", "mar jaana", "mar jaunga", "mar jaungi", "jeena nahi",
+                "hopeless", "worthless"]
+SIMPLE_PATTERNS = ["hi", "hello", "hey", "hii", "good morning", "good evening", "good night",
+                   "thanks", "thank you", "ok", "okay", "bye", "goodbye"]
+PLATFORM_PATTERNS = ["yoga", "workout", "exercise", "gym", "meditation", "breathing", "journal",
+                     "habit", "mood", "peer chat", "community", "what can you do", "features",
+                     "help me"]
+
+
+def classify_message(message: str) -> str:
+    """Returns: 'simple', 'platform', 'crisis', 'agent'"""
+    msg = message.lower().strip()
+
+    # Crisis - handled immediately
+    if any(w in msg for w in CRISIS_WORDS):
+        return "crisis"
+
+    # Simple greetings - no API call needed
+    if msg in SIMPLE_PATTERNS or msg.replace("!", "").strip() in SIMPLE_PATTERNS:
+        return "simple"
+
+    # Platform info - lightweight canned responses
+    if any(w in msg for w in PLATFORM_PATTERNS):
+        return "platform"
+
+    # Everything else goes to the full agent
+    return "agent"
+
+
+SIMPLE_RESPONSES = {
+    "hi": "Hi there! 👋 I'm MindCare Assistant. How are you feeling today?",
+    "hello": "Hello! I'm here to support you. How can I help you today?",
+    "hey": "Hey! How are you doing? I'm here if you need to talk.",
+    "hii": "Hi! 😊 How are you feeling right now?",
+    "good morning": "Good morning! 🌅 How are you starting your day?",
+    "good evening": "Good evening! How has your day been?",
+    "good night": "Good night! 🌙 Take care and sleep well.",
+    "thanks": "You're welcome! I'm always here if you need support. 💙",
+    "thank you": "You're welcome! Take care of yourself. 💙",
+    "ok": "I'm here whenever you need me! 😊",
+    "okay": "Alright! Let me know if there's anything you need.",
+    "bye": "Take care! Remember, I'm always here when you need support. 💙",
+    "goodbye": "Goodbye! Wishing you a peaceful day. 💙",
+}
+
+
 class AgentState(TypedDict):
     messages: Annotated[Sequence, operator.add]
     user_id: str
 
 
 def create_mindcare_agent():
-    llm = ChatGroq(model=AGENT_MODEL, temperature=0.7, api_key=os.getenv('GROQ_API_KEY'))
+    llm = ChatGroq(model=get_best_model(), temperature=0.7, api_key=os.getenv('GROQ_API_KEY'))
     llm_with_tools = llm.bind_tools(TOOLS)
 
     def agent_node(state: AgentState):

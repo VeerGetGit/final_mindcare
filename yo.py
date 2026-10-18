@@ -362,15 +362,50 @@ def patient_chat():
             return jsonify({"error": "No message provided"}), 400
 
         # Imported lazily so the rest of the app still runs if agent deps are missing.
-        from agent import agent, get_chat_history, save_message
+        from agent import (classify_message, SIMPLE_RESPONSES, agent, get_chat_history,
+                           save_message, get_mindcare_info, flag_crisis_message,
+                           get_crisis_resources)
         from langchain_core.messages import AIMessage, HumanMessage
+        from groq import RateLimitError
 
+        msg_type = classify_message(message)
+        print(f"Chat [{msg_type}] user={user_id}")
+
+        # Cheap paths: no Groq call
+        if msg_type == "simple":
+            key = message.lower().strip().replace("!", "").strip()
+            reply = SIMPLE_RESPONSES.get(key, "I'm here to help! How are you feeling?")
+            save_message(user_id, 'user', message)
+            save_message(user_id, 'bot', reply)
+            return jsonify({"response": reply, "flagged": False, "handled": True, "api_call": False})
+
+        if msg_type == "platform":
+            info = get_mindcare_info.invoke({"topic": message})
+            save_message(user_id, 'user', message)
+            save_message(user_id, 'bot', info)
+            return jsonify({"response": info, "flagged": False, "handled": True, "api_call": False})
+
+        if msg_type == "crisis":
+            flag_crisis_message.invoke({"user_id": user_id, "message": message})
+            resources = get_crisis_resources.invoke({})
+            save_message(user_id, 'user', message)
+            save_message(user_id, 'bot', resources)
+            return jsonify({"response": resources, "flagged": True, "handled": True, "api_call": False})
+
+        # Full agent
         history = get_chat_history(user_id, 10)
         history.append(HumanMessage(content=message))
         save_message(user_id, 'user', message)
 
-        result = agent.invoke({"messages": history, "user_id": user_id},
-                              {"recursion_limit": 12})
+        try:
+            result = agent.invoke({"messages": history, "user_id": user_id},
+                                  {"recursion_limit": 12})
+        except RateLimitError:
+            fallback = ("I'm a bit busy right now! Please try again in a moment. In the meantime, "
+                        "you can explore the Yoga or Meditation sections on your dashboard. 💙")
+            save_message(user_id, 'bot', fallback)
+            return jsonify({"response": fallback, "flagged": False, "handled": True,
+                            "rate_limited": True, "api_call": True})
 
         ai_response = ""
         for m in reversed(result["messages"]):
@@ -379,11 +414,10 @@ def patient_chat():
                 break
         ai_response = ai_response.strip() or "I'm here with you. Could you tell me a little more?"
 
-        # Only count tool results from this turn (history can't contain tool messages)
         flagged = "CRISIS_FLAGGED" in str(result["messages"])
         save_message(user_id, 'bot', ai_response)
 
-        return jsonify({"response": ai_response, "flagged": flagged, "handled": True})
+        return jsonify({"response": ai_response, "flagged": flagged, "handled": True, "api_call": True})
 
     except Exception:
         import traceback
