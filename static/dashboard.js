@@ -2221,6 +2221,11 @@ async function sendChatMessage() {
 
   appendMessage('user', message);
   input.value = '';
+
+  if (THERAPIST_INTENT_REGEX.test(message)) {
+    showTherapistOptionsInChat();
+    return;
+  }
   sendBtn.disabled = true;
 
   try {
@@ -2255,10 +2260,121 @@ async function sendChatMessage() {
 
 // ── Therapist session booking ────────────────────────────────────
 
-function openBookingModal() {
+let selectedTherapist = null; // { id, name }
+let therapistsCache = null;
+
+const STATUS_BADGES = {
+  available: { label: 'Available', cls: 'available' },
+  busy: { label: 'In Session', cls: 'busy' },
+  offline: { label: 'Not Available', cls: 'offline' }
+};
+
+// Therapist list comes from the backend (admin access); falls back to a direct Firestore read.
+async function fetchTherapists(force = false) {
+  if (therapistsCache && !force) return therapistsCache;
+  let list;
+  try {
+    const res = await fetch('/api/therapists');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    list = await res.json();
+  } catch (error) {
+    console.warn('Backend therapist fetch failed, trying Firestore:', error);
+    try {
+      const snap = await getDocs(collection(db, 'therapists'));
+      list = snap.docs.map((d) => {
+        const t = d.data();
+        return {
+          id: d.id,
+          name: t.name || 'Therapist',
+          specialization: t.specialization || '',
+          status: t.status || t.available || 'available'
+        };
+      });
+    } catch (err) {
+      console.error('Error loading therapists:', err);
+      return [];
+    }
+  }
+  therapistsCache = list;
+  return list;
+}
+
+function normalizeStatus(status) {
+  if (status === false) return 'offline';
+  const s = String(status || 'available').toLowerCase();
+  return STATUS_BADGES[s] ? s : 'available';
+}
+
+function buildTherapistCard(therapist, className, onClick) {
+  const card = document.createElement('div');
+  card.className = className;
+  card.tabIndex = 0;
+  const badge = STATUS_BADGES[normalizeStatus(therapist.status)];
+
+  const name = document.createElement('div');
+  name.className = 'mc-therapist-name';
+  name.textContent = therapist.name;
+  card.appendChild(name);
+
+  if (therapist.specialization) {
+    const spec = document.createElement('div');
+    spec.className = 'mc-therapist-spec';
+    spec.textContent = therapist.specialization;
+    card.appendChild(spec);
+  }
+
+  const badgeEl = document.createElement('span');
+  badgeEl.className = `mc-badge ${therapist.badgeClass || badge.cls}`;
+  badgeEl.textContent = therapist.badgeLabel || badge.label;
+  card.appendChild(badgeEl);
+
+  card.addEventListener('click', onClick);
+  card.addEventListener('keydown', (e) => { if (e.key === 'Enter') onClick(); });
+  return card;
+}
+
+function selectTherapist(therapist) {
+  selectedTherapist = therapist;
+  document.getElementById('booking-therapist-name').textContent = therapist.name;
+  document.getElementById('booking-step-therapists').style.display = 'none';
   document.getElementById('booking-form').style.display = 'block';
+}
+
+function backToTherapists() {
+  document.getElementById('booking-form').style.display = 'none';
+  document.getElementById('booking-step-therapists').style.display = 'block';
+}
+
+async function renderBookingTherapists() {
+  const listEl = document.getElementById('booking-therapist-list');
+  listEl.textContent = 'Loading therapists...';
+  const therapists = await fetchTherapists();
+  listEl.textContent = '';
+
+  therapists.forEach((t) => {
+    listEl.appendChild(buildTherapistCard(t, 'mc-therapist-card', () => selectTherapist(t)));
+  });
+
+  const anyone = { id: 'any', name: 'First Available' };
+  listEl.appendChild(buildTherapistCard(
+    { ...anyone, name: 'First Available Counselor', specialization: 'Booked with whoever is free', badgeClass: 'available', badgeLabel: 'Always Available' },
+    'mc-therapist-card',
+    () => selectTherapist(anyone)
+  ));
+}
+
+// Optionally pass a therapist ({ id, name }) to skip straight to the booking details.
+function openBookingModal(therapist) {
   document.getElementById('booking-success').style.display = 'none';
   document.getElementById('booking-modal').style.display = 'flex';
+  document.getElementById('booking-form').reset();
+  if (therapist && therapist.id) {
+    selectTherapist(therapist);
+  } else {
+    selectedTherapist = null;
+    backToTherapists();
+    renderBookingTherapists();
+  }
 }
 
 function closeBookingModal() {
@@ -2272,6 +2388,10 @@ async function submitBooking(event) {
     alert('Please log in to book a session.');
     return;
   }
+  if (!selectedTherapist) {
+    backToTherapists();
+    return;
+  }
 
   const timeslot = document.getElementById('booking-timeslot').value;
   const notes = document.getElementById('booking-notes').value.trim();
@@ -2282,9 +2402,11 @@ async function submitBooking(event) {
   try {
     await addDoc(collection(db, 'session_bookings'), {
       user_id: user.uid,
+      therapist_name: selectedTherapist.id === 'any' ? 'First Available' : selectedTherapist.name,
+      therapist_id: selectedTherapist.id,
       timeslot,
       notes,
-      timestamp: serverTimestamp(),
+      timestamp: new Date(),
       status: 'pending'
     });
     document.getElementById('booking-form').reset();
@@ -2298,9 +2420,34 @@ async function submitBooking(event) {
   }
 }
 
+// ── Chatbot therapist recommendation ─────────────────────────────
+
+const THERAPIST_INTENT_REGEX = /\b(doctor|therapist|counsell?or|talk to someone|need help|book|appointment|professional)\b/i;
+
+async function showTherapistOptionsInChat() {
+  appendMessage('bot', 'It sounds like talking to someone could help. Here are our therapists. Pick one to book a session:');
+  const messages = document.getElementById('chatbot-messages');
+  const list = document.createElement('div');
+  list.className = 'chatbot-therapists';
+  messages.appendChild(list);
+
+  const therapists = await fetchTherapists();
+  if (!therapists.length) {
+    list.remove();
+    appendMessage('bot', "I couldn't load the therapist list. You can use the Book Session button on the dashboard.");
+    return;
+  }
+  therapists.forEach((t) => {
+    list.appendChild(buildTherapistCard(t, 'mc-therapist-card compact', () => openBookingModal(t)));
+  });
+  messages.scrollTop = messages.scrollHeight;
+}
+
+
+
 // dashboard.js is an ES module; expose handlers used by inline onclick attributes
 Object.assign(window, {
   toggleChatbot, sendChatMessage, appendMessage,
-  openBookingModal, closeBookingModal, submitBooking,
+  openBookingModal, closeBookingModal, submitBooking, backToTherapists,
   closeCrisisPopup, connectToTherapist
 });

@@ -277,6 +277,40 @@ def _get_firestore():
         return None
 
 
+def _therapist_status(t):
+    """'status' field, else a boolean/str 'available' field; defaults to 'available'."""
+    status = t.get("status")
+    if status:
+        return str(status).lower()
+    flag = t.get("available")
+    if flag is False:
+        return "offline"
+    if isinstance(flag, str) and flag:
+        return flag.lower()
+    return "available"
+
+
+@app.route('/api/therapists')
+def list_therapists():
+    fs = _get_firestore()
+    if fs is None:
+        return jsonify({"error": "Firestore is not configured on the server."}), 503
+    try:
+        therapists = []
+        for doc in fs.collection("therapists").stream():
+            t = doc.to_dict() or {}
+            therapists.append({
+                "id": doc.id,
+                "name": t.get("name", "Therapist"),
+                "specialization": t.get("specialization", ""),
+                "status": _therapist_status(t),
+            })
+        return jsonify(therapists)
+    except Exception as e:
+        print(f"❌ Error fetching therapists: {e}")
+        return jsonify({"error": "Could not load therapists."}), 500
+
+
 @app.route('/api/patient/chat', methods=['POST'])
 def patient_chat():
     try:
@@ -288,7 +322,7 @@ def patient_chat():
             return jsonify({"error": "No message provided"}), 400
 
         response = client.chat.completions.create(
-            model=CHAT_MODEL,
+            model="openai/gpt-oss-20b",
             messages=[
                 {"role": "system", "content": CHAT_SYSTEM_PROMPT},
                 {"role": "user", "content": message}
