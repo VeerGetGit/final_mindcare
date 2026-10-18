@@ -2224,10 +2224,6 @@ async function sendChatMessage() {
   appendMessage('user', message);
   input.value = '';
 
-  if (THERAPIST_INTENT_REGEX.test(message)) {
-    showTherapistOptionsInChat();
-    return;
-  }
   sendBtn.disabled = true;
 
   try {
@@ -2240,6 +2236,10 @@ async function sendChatMessage() {
     if (!res.ok) throw new Error(data.error || 'Request failed');
 
     appendMessage('bot', data.response);
+    // The agent lists therapists in text; add clickable cards when it does.
+    if (data.response.includes(THERAPIST_LIST_MARKER)) {
+      await showTherapistOptionsInChat();
+    }
     // The agent route already stores messages and files crisis cases server-side.
     if (!data.handled) saveChatMessages(user.uid, message, data.response);
     if (data.flagged) {
@@ -2521,10 +2521,10 @@ async function saveChatMessages(uid, userText, botText) {
 
 // ── Chatbot therapist recommendation ─────────────────────────────
 
-const THERAPIST_INTENT_REGEX = /\b(doctor|therapist|counsell?or|talk to someone|need help|book|appointment|professional)\b/i;
+// The agent is instructed to start its therapist list with this marker.
+const THERAPIST_LIST_MARKER = 'Available therapists:';
 
 async function showTherapistOptionsInChat() {
-  appendMessage('bot', 'Available therapists right now:');
   const messages = document.getElementById('chatbot-messages');
   const list = document.createElement('div');
   list.className = 'chatbot-therapists';

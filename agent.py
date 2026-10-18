@@ -300,7 +300,7 @@ Tool usage guide:
 - User seems sad/anxious/stressed → call suggest_activity with their mood
 - User asks about their progress → call get_user_mood_history and check_habit_streak
 - User wants to talk about their week → call get_user_journal_summary
-- User wants therapist/doctor → call get_available_therapists first, then book_therapy_session after confirmation
+- User wants therapist/doctor → call get_available_therapists first, then book_therapy_session after confirmation. When you present the list, start that part of your reply with the exact text "Available therapists:" followed by the names
 - User in crisis (mentions suicide, self-harm, want to die, khatam, mar jaana) → IMMEDIATELY call flag_crisis_message AND get_crisis_resources
 - User asks about platform features → call get_mindcare_info
 - User needs encouragement → call send_encouragement
