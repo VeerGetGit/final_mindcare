@@ -45,11 +45,18 @@
 
       <!-- MY CASES -->
       <section id="tp-cases-view" style="display:none;">
-        <h2>📋 My Cases</h2>
-        <div class="tp-tabs">
-          <button class="tp-tab active" id="cases-tab-bookings">📋 Session Bookings</button>
+        <!-- Only one of these two panels is visible at a time -->
+        <div id="booking-list-panel">
+          <h2>📋 My Cases</h2>
+          <div class="tp-tabs">
+            <button class="tp-tab active" id="cases-tab-bookings">📋 Session Bookings</button>
+          </div>
+          <div id="cases-bookings" class="tp-cases-list"></div>
         </div>
-        <div id="cases-bookings" class="tp-cases-list"></div>
+        <div id="patient-detail-panel" style="display:none;">
+          <button id="patient-detail-back" class="tp-btn tp-btn-outline">← Back to My Cases</button>
+          <div id="patient-detail-body" class="tp-case-card tp-detail-card"></div>
+        </div>
       </section>
 
       <div id="tp-empty-state" class="tp-empty-state">

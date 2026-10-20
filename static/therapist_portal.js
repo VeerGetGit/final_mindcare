@@ -433,6 +433,7 @@ document.getElementById("tp-cases-btn").addEventListener("click", () => {
   if (opening) {
     empty.style.display = "none";
     chatView.style.display = "none";
+    hidePatientDetail();
     loadCases();
   } else {
     empty.style.display = currentPatientId ? "none" : "";
@@ -489,10 +490,20 @@ function drName(name) {
   return /^dr\.?\s/i.test(name) ? name : "Dr. " + name;
 }
 
-function patientBlock(c) {
+function patientBlock(c, onNameClick) {
   const identity = document.createElement("div");
   identity.className = "tp-case-identity";
   addLine(identity, "Patient", c.patient_name || "Anonymous");
+  if (onNameClick) {
+    // Make the name a same-page link
+    const valueNode = identity.querySelector(".tp-case-row").lastChild;
+    const link = document.createElement("button");
+    link.type = "button";
+    link.className = "tp-name-link";
+    link.textContent = valueNode.textContent;
+    link.addEventListener("click", onNameClick);
+    valueNode.replaceWith(link);
+  }
   addLine(identity, "Email", c.patient_email || "No email");
   return identity;
 }
@@ -540,6 +551,8 @@ async function respondToBooking(c, status, badge, actions) {
         : `${drName(therapistName)} is not available on ${c.date || "your chosen date"} at ${time}. You can book another session.`,
       created_at: serverTimestamp()
     });
+    c.status = status;
+    c.responded_at = new Date();
     setStatusBadge(badge, status);
     setBookingResult(actions, status, new Date().toLocaleString());
     showToast(accepted ? "Session accepted" : "Session rejected — user notified", "success");
@@ -549,7 +562,34 @@ async function respondToBooking(c, status, badge, actions) {
   }
 }
 
+let currentBookings = [];
+
+// Accept / Reject (or the result label once answered) + chat history; used by list cards and the detail panel
+function buildBookingActions(c, badge) {
+  const actions = document.createElement("div");
+  actions.className = "tp-case-actions";
+  const status = c.status || "pending";
+
+  if (status === "pending") {
+    const acceptBtn = document.createElement("button");
+    acceptBtn.className = "tp-btn tp-btn-primary";
+    acceptBtn.dataset.bookingAction = "accept";
+    acceptBtn.textContent = "✅ Accept";
+    acceptBtn.addEventListener("click", () => respondToBooking(c, "accepted", badge, actions));
+    const rejectBtn = document.createElement("button");
+    rejectBtn.className = "tp-btn tp-btn-outline";
+    rejectBtn.dataset.bookingAction = "reject";
+    rejectBtn.textContent = "❌ Reject";
+    rejectBtn.addEventListener("click", () => respondToBooking(c, "rejected", badge, actions));
+    actions.append(acceptBtn, rejectBtn);
+  } else if (["accepted", "confirmed", "rejected"].includes(status)) {
+    setBookingResult(actions, status, timeLine(c, "responded_at"));
+  }
+  return actions;
+}
+
 function renderBookings(container, bookings) {
+  currentBookings = bookings;
   container.textContent = "";
   if (!bookings.length) {
     container.textContent = "No session bookings yet.";
@@ -559,12 +599,11 @@ function renderBookings(container, bookings) {
     const card = document.createElement("div");
     card.className = "tp-case-card";
 
-    const status = c.status || "pending";
     const badge = document.createElement("span");
-    setStatusBadge(badge, status);
+    setStatusBadge(badge, c.status || "pending");
     card.appendChild(badge);
 
-    card.appendChild(patientBlock(c));
+    card.appendChild(patientBlock(c, () => showPatientDetail(c.id)));
     const meta = document.createElement("div");
     meta.className = "tp-case-meta";
     meta.textContent = timeLine(c, "timestamp");
@@ -575,24 +614,12 @@ function renderBookings(container, bookings) {
     addLine(card, "Problem", c.notes || c.problem);
     addLine(card, "Booked via", c.booked_via === "chatbot" ? "📱 Chatbot" : "🖥️ Dashboard");
 
-    const actions = document.createElement("div");
-    actions.className = "tp-case-actions";
-
-    if (status === "pending") {
-      const acceptBtn = document.createElement("button");
-      acceptBtn.className = "tp-btn tp-btn-primary";
-      acceptBtn.dataset.bookingAction = "accept";
-      acceptBtn.textContent = "✅ Accept";
-      acceptBtn.addEventListener("click", () => respondToBooking(c, "accepted", badge, actions));
-      const rejectBtn = document.createElement("button");
-      rejectBtn.className = "tp-btn tp-btn-outline";
-      rejectBtn.dataset.bookingAction = "reject";
-      rejectBtn.textContent = "❌ Reject";
-      rejectBtn.addEventListener("click", () => respondToBooking(c, "rejected", badge, actions));
-      actions.append(acceptBtn, rejectBtn);
-    } else if (["accepted", "confirmed", "rejected"].includes(status)) {
-      setBookingResult(actions, status, timeLine(c, "responded_at"));
-    }
+    const actions = buildBookingActions(c, badge);
+    const detailBtn = document.createElement("button");
+    detailBtn.className = "tp-btn tp-btn-outline";
+    detailBtn.textContent = "View Details";
+    detailBtn.addEventListener("click", () => showPatientDetail(c.id));
+    actions.appendChild(detailBtn);
 
     const histBtn = document.createElement("button");
     histBtn.className = "tp-btn tp-btn-outline";
@@ -604,6 +631,49 @@ function renderBookings(container, bookings) {
     container.appendChild(card);
   });
 }
+
+// ── Patient detail (replaces the list in the same page; never shown side by side) ──
+function showPatientDetail(bookingId) {
+  const c = currentBookings.find(b => b.id === bookingId);
+  if (!c) return;
+
+  const body = document.getElementById("patient-detail-body");
+  body.textContent = "";
+
+  const badge = document.createElement("span");
+  setStatusBadge(badge, c.status || "pending");
+  body.appendChild(badge);
+
+  const name = document.createElement("h3");
+  name.textContent = c.patient_name || "Anonymous";
+  body.appendChild(name);
+  addLine(body, "Email", c.patient_email || "No email");
+  addLine(body, "Date", c.date);
+  addLine(body, "Time slot", c.timeslot);
+  addLine(body, "Session notes", c.notes || c.problem || "None");
+
+  const actions = buildBookingActions(c, badge);
+  const histBtn = document.createElement("button");
+  histBtn.className = "tp-btn tp-btn-outline";
+  histBtn.textContent = "View Chat History";
+  histBtn.addEventListener("click", () => showChatHistory(c));
+  actions.appendChild(histBtn);
+  body.appendChild(actions);
+
+  document.getElementById("booking-list-panel").style.display = "none";
+  document.getElementById("patient-detail-panel").style.display = "block";
+}
+
+function hidePatientDetail() {
+  document.getElementById("patient-detail-panel").style.display = "none";
+  document.getElementById("booking-list-panel").style.display = "block";
+}
+
+document.getElementById("patient-detail-back").addEventListener("click", () => {
+  hidePatientDetail();
+  // Re-render so any Accept/Reject done in the detail panel shows in the list
+  renderBookings(document.getElementById("cases-bookings"), currentBookings);
+});
 
 async function showChatHistory(c) {
   const patientId = c.patient_id || c.patient_uid || c.user_id;
@@ -662,5 +732,5 @@ document.getElementById("close-chat-history-modal").addEventListener("click", ()
 
 // ── HOME ──────────────────────────────────────────────────────────────────────
 document.getElementById("tp-home-btn").addEventListener("click", () => {
-  window.location.href = "/";
+  window.location.href = "/therapist/portal";
 });
