@@ -42,6 +42,11 @@
             <h1>Welcome, <span id="username">User</span></h1>
             <p class="user-greeting">Track your moods and journal daily</p>
         </div>
+        <button id="notif-bell" class="notif-bell" aria-label="Notifications" onclick="toggleNotifications()">
+            🔔
+            <span id="notif-badge" class="notif-badge" style="display:none">0</span>
+        </button>
+        <div id="notif-dropdown" class="notif-dropdown" style="display:none"></div>
     </header>
 
 

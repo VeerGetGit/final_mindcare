@@ -3,7 +3,7 @@ import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/fi
 import {
   getFirestore, doc, collection,
   addDoc, getDoc, getDocs, updateDoc, deleteDoc,
-  query, orderBy, where, serverTimestamp
+  query, orderBy, where, runTransaction, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -470,10 +470,11 @@ async function fetchBookings() {
 }
 
 async function fetchCrisisCases() {
-  // "chatbot_flag" is the old type name; keep showing those existing cases
+  // Unclaimed crisis alerts only; claiming one removes it from every therapist's pool view
   const snap = await getDocs(query(
     collection(db, "therapist_cases"),
-    where("type", "in", ["crisis", "chatbot_flag"])
+    where("type", "==", "crisis"),
+    where("assigned_to", "==", "pool")
   ));
   const cases = [];
   snap.forEach(d => cases.push({ id: d.id, ...d.data() }));
@@ -485,8 +486,8 @@ async function loadCases() {
   const alertsEl = document.getElementById("cases-alerts");
   bookingsEl.textContent = alertsEl.textContent = "Loading...";
   try {
-    renderCases(bookingsEl, await fetchBookings(), "booking");
-    renderCases(alertsEl, await fetchCrisisCases(), "crisis");
+    renderBookings(bookingsEl, await fetchBookings());
+    renderCrisisCases(alertsEl, await fetchCrisisCases());
   } catch (e) {
     console.error("Error loading cases:", e);
     bookingsEl.textContent = alertsEl.textContent = "Error loading cases.";
@@ -505,70 +506,116 @@ function addLine(parent, label, text) {
 
 function setStatusBadge(badge, status) {
   badge.className = "tp-status-badge " + status;
-  badge.textContent = status;
+  badge.textContent = status.replace("_", " ");
 }
 
-function renderCases(container, cases, type) {
+function drName(name) {
+  return /^dr\.?\s/i.test(name) ? name : "Dr. " + name;
+}
+
+function patientBlock(c) {
+  const identity = document.createElement("div");
+  identity.className = "tp-case-identity";
+  addLine(identity, "Patient", c.patient_name || "Anonymous");
+  addLine(identity, "Email", c.patient_email || "No email");
+  return identity;
+}
+
+function timeLine(c, field) {
+  const t = c[field];
+  const d = t && t.toDate ? t.toDate() : (t ? new Date(t) : null);
+  return d ? d.toLocaleString() : "";
+}
+
+// Static result label shown once a booking has been answered
+function setBookingResult(actions, status, when) {
+  actions.querySelectorAll("[data-booking-action]").forEach(b => b.remove());
+  let label = actions.querySelector(".tp-booking-result");
+  if (!label) {
+    label = document.createElement("span");
+    label.className = "tp-booking-result";
+    actions.prepend(label);
+  }
+  const accepted = status === "accepted" || status === "confirmed";
+  label.textContent = (accepted ? "✅ Accepted" : "❌ Rejected") + (when ? " — " + when : "");
+}
+
+async function respondToBooking(c, status, badge, actions) {
+  const accepted = status === "accepted";
+  // First-available bookings go to whoever answers
+  const therapistName = c.therapist_id === "any" || !c.therapist_name ? currentTherapistName : c.therapist_name;
+  const time = (c.timeslot || "").replace(/^(today|tomorrow)\s*/i, "");
+  try {
+    await updateDoc(doc(db, "session_bookings", c.id), {
+      status,
+      responded_at: new Date(),
+      ...(c.therapist_id === "any" ? { therapist_id: currentTherapistId, therapist_name: currentTherapistName } : {})
+    });
+    await addDoc(collection(db, "user_notifications"), {
+      user_id: c.user_id || c.patient_id,
+      type: "booking_update",
+      status,
+      therapist_name: therapistName,
+      timeslot: c.timeslot || "",
+      date: c.date || "",
+      read: false,
+      message: accepted
+        ? `Your session with ${drName(therapistName)} on ${c.date || "your chosen date"} at ${time} is confirmed!`
+        : `${drName(therapistName)} is not available on ${c.date || "your chosen date"} at ${time}. You can book another session.`,
+      created_at: serverTimestamp()
+    });
+    setStatusBadge(badge, status);
+    setBookingResult(actions, status, new Date().toLocaleString());
+    showToast(accepted ? "Session accepted" : "Session rejected — user notified", "success");
+  } catch (e) {
+    console.error("Error responding to booking:", e);
+    showToast("Error: " + e.message, "error");
+  }
+}
+
+function renderBookings(container, bookings) {
   container.textContent = "";
-  if (!cases.length) {
-    container.textContent = type === "booking" ? "No session bookings yet." : "No crisis alerts.";
+  if (!bookings.length) {
+    container.textContent = "No session bookings yet.";
     return;
   }
-  const isBooking = type === "booking";
-  const collectionName = isBooking ? "session_bookings" : "therapist_cases";
-
-  cases.forEach(c => {
+  bookings.forEach(c => {
     const card = document.createElement("div");
     card.className = "tp-case-card";
 
+    const status = c.status || "pending";
     const badge = document.createElement("span");
-    setStatusBadge(badge, c.status || (isBooking ? "pending" : "urgent"));
+    setStatusBadge(badge, status);
     card.appendChild(badge);
 
-    const patientId = c.patient_id || c.patient_uid || c.user_id;
-    const identity = document.createElement("div");
-    identity.className = "tp-case-identity";
-    addLine(identity, "Patient", c.patient_name || "Anonymous");
-    addLine(identity, "Email", c.patient_email || "No email");
-    addLine(identity, "Patient ID", patientId);
-    card.appendChild(identity);
+    card.appendChild(patientBlock(c));
+    const meta = document.createElement("div");
+    meta.className = "tp-case-meta";
+    meta.textContent = timeLine(c, "timestamp");
+    card.appendChild(meta);
 
-    const when = caseTime(c);
-    if (when) {
-      const meta = document.createElement("div");
-      meta.className = "tp-case-meta";
-      meta.textContent = when.toLocaleString();
-      card.appendChild(meta);
-    }
-
-    if (isBooking) {
-      addLine(card, "Time slot", c.timeslot);
-      addLine(card, "Problem", c.notes || c.problem);
-      addLine(card, "Booked via", c.booked_via === "chatbot" ? "📱 Chatbot" : "🖥️ Dashboard");
-    } else {
-      addLine(card, "Triggering message", c.trigger_message);
-    }
+    addLine(card, "Date", c.date);
+    addLine(card, "Time slot", c.timeslot);
+    addLine(card, "Problem", c.notes || c.problem);
+    addLine(card, "Booked via", c.booked_via === "chatbot" ? "📱 Chatbot" : "🖥️ Dashboard");
 
     const actions = document.createElement("div");
     actions.className = "tp-case-actions";
 
-    // Confirm (bookings) / Mark Handled (crisis alerts)
-    const doneStatus = isBooking ? "confirmed" : "resolved";
-    const isOpen = isBooking ? (c.status || "pending") === "pending" : c.status !== "resolved";
-    if (isOpen) {
-      const actionBtn = document.createElement("button");
-      actionBtn.className = "tp-btn tp-btn-primary";
-      actionBtn.textContent = isBooking ? "Confirm" : "Mark Handled";
-      actionBtn.addEventListener("click", async () => {
-        try {
-          await updateDoc(doc(db, collectionName, c.id), { status: doneStatus });
-          setStatusBadge(badge, doneStatus);
-          actionBtn.remove();
-        } catch (e) {
-          showToast("Error: " + e.message, "error");
-        }
-      });
-      actions.appendChild(actionBtn);
+    if (status === "pending") {
+      const acceptBtn = document.createElement("button");
+      acceptBtn.className = "tp-btn tp-btn-primary";
+      acceptBtn.dataset.bookingAction = "accept";
+      acceptBtn.textContent = "✅ Accept";
+      acceptBtn.addEventListener("click", () => respondToBooking(c, "accepted", badge, actions));
+      const rejectBtn = document.createElement("button");
+      rejectBtn.className = "tp-btn tp-btn-outline";
+      rejectBtn.dataset.bookingAction = "reject";
+      rejectBtn.textContent = "❌ Reject";
+      rejectBtn.addEventListener("click", () => respondToBooking(c, "rejected", badge, actions));
+      actions.append(acceptBtn, rejectBtn);
+    } else if (["accepted", "confirmed", "rejected"].includes(status)) {
+      setBookingResult(actions, status, timeLine(c, "responded_at"));
     }
 
     const histBtn = document.createElement("button");
@@ -577,6 +624,57 @@ function renderCases(container, cases, type) {
     histBtn.addEventListener("click", () => showChatHistory(c));
     actions.appendChild(histBtn);
 
+    card.appendChild(actions);
+    container.appendChild(card);
+  });
+}
+
+async function claimCrisisCase(c, card, container) {
+  try {
+    // Transaction so two therapists can't both claim the same alert
+    await runTransaction(db, async (tx) => {
+      const ref = doc(db, "therapist_cases", c.id);
+      const snap = await tx.get(ref);
+      if (!snap.exists() || snap.data().assigned_to !== "pool") throw new Error("Already claimed by another therapist");
+      tx.update(ref, { assigned_to: currentTherapistId, assigned_name: currentTherapistName, status: "in_progress" });
+    });
+    card.remove();
+    if (!container.children.length) container.textContent = "No crisis alerts.";
+    showToast("You are now connected with this patient", "success");
+  } catch (e) {
+    card.remove();
+    showToast(e.message, "error");
+  }
+}
+
+function renderCrisisCases(container, cases) {
+  container.textContent = "";
+  if (!cases.length) {
+    container.textContent = "No crisis alerts.";
+    return;
+  }
+  cases.forEach(c => {
+    const card = document.createElement("div");
+    card.className = "tp-case-card";
+
+    const badge = document.createElement("span");
+    setStatusBadge(badge, "urgent");
+    card.appendChild(badge);
+
+    card.appendChild(patientBlock(c));
+    const meta = document.createElement("div");
+    meta.className = "tp-case-meta";
+    meta.textContent = timeLine(c, "created_at") || timeLine(c, "timestamp");
+    card.appendChild(meta);
+    addLine(card, "Message", c.message || c.trigger_message);
+
+    const actions = document.createElement("div");
+    actions.className = "tp-case-actions";
+    const handleBtn = document.createElement("button");
+    handleBtn.className = "tp-btn tp-btn-primary";
+    handleBtn.textContent = "🙋 I'll Handle This";
+    handleBtn.addEventListener("click", () => claimCrisisCase(c, card, container));
+    actions.appendChild(handleBtn);
     card.appendChild(actions);
     container.appendChild(card);
   });

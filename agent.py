@@ -52,6 +52,18 @@ def _now():
     return datetime.datetime.now(datetime.timezone.utc)
 
 
+def _slot_date(timeslot):
+    """'Today 3PM' / 'Tomorrow 10AM' -> 'Oct 22, 2026' (None if the slot has no day word)."""
+    low = timeslot.lower()
+    if 'tomorrow' in low:
+        d = datetime.date.today() + datetime.timedelta(days=1)
+    elif 'today' in low:
+        d = datetime.date.today()
+    else:
+        return None
+    return f"{d:%b} {d.day}, {d.year}"
+
+
 def _status_of(t):
     status = t.get('status')
     if status:
@@ -163,11 +175,19 @@ def book_therapy_session(therapist_name: str, timeslot: str, concern: str, user_
     timeslot examples: 'Today 3PM', 'Today 5PM', 'Tomorrow 10AM', 'Tomorrow 2PM', 'Tomorrow 4PM'."""
     try:
         db = _require_db()
-        # Only one active booking per user per slot
-        existing = db.collection('session_bookings').where('user_id', '==', user_id) \
-            .where('timeslot', '==', timeslot).stream()
-        if any((d.to_dict() or {}).get('status') != 'cancelled' for d in existing):
-            return 'You already have a booking for this time slot. Please choose a different time.'
+        date = _slot_date(timeslot)
+        if not date:
+            return ("I couldn't tell which day that is. Please pick one of: Today 3PM, Today 5PM, "
+                    "Tomorrow 10AM, Tomorrow 2PM, Tomorrow 4PM.")
+        # One pending/accepted session per user per date (cancelled/rejected don't count)
+        from google.cloud.firestore_v1.base_query import FieldFilter
+        existing = (db.collection('session_bookings')
+                    .where(filter=FieldFilter('user_id', '==', user_id))
+                    .where(filter=FieldFilter('date', '==', date))
+                    .where(filter=FieldFilter('status', 'in', ['pending', 'accepted']))
+                    .limit(1).stream())
+        if any(True for _ in existing):
+            return 'You already have a session on this date. Please choose a different date.'
 
         therapist_id, resolved_name = 'any', therapist_name
         for d in db.collection('therapists').stream():
@@ -180,7 +200,7 @@ def book_therapy_session(therapist_name: str, timeslot: str, concern: str, user_
         db.collection('session_bookings').add({
             'user_id': user_id, **_patient_identity(user_id),
             'therapist_name': resolved_name, 'therapist_id': therapist_id,
-            'timeslot': timeslot, 'notes': concern, 'timestamp': _now(),
+            'timeslot': timeslot, 'date': date, 'notes': concern, 'timestamp': _now(),
             'status': 'pending', 'booked_via': 'chatbot', 'notify_therapist': True})
         return f'Session booked with {resolved_name} for {timeslot}. The therapist will confirm shortly.'
     except Exception as e:
@@ -201,18 +221,26 @@ def get_mindcare_info(topic: str) -> str:
     return 'MindCare offers: ' + ', '.join(MINDCARE_INFO) + '. Ask about any of these.'
 
 
+CRISIS_REPLY = ("I can see you're going through something really difficult right now. "
+                "A trained support person will connect with you shortly. "
+                "You are not alone. 💙 If this is an emergency, please call iCall: 9152987821")
+
+
 @tool
 def flag_crisis_message(user_id: str, message: str) -> str:
     """Flag a message showing crisis or self-harm risk so a therapist is notified immediately."""
     try:
         db = _require_db()
+        now = _now()
+        # No therapist is assigned: any therapist can claim it from the pool in the portal.
         db.collection('therapist_cases').add({
-            'therapist_id': 'any', **_patient_identity(user_id),
-            'type': 'crisis', 'source': 'chatbot',
-            'trigger_message': message, 'ai_response': '', 'status': 'urgent', 'timestamp': _now()})
+            'user_id': user_id, **_patient_identity(user_id),
+            'type': 'crisis', 'source': 'chatbot', 'status': 'urgent',
+            'message': message, 'trigger_message': message,
+            'assigned_to': 'pool', 'created_at': now, 'timestamp': now})
     except Exception as e:
         print(f'ERROR: flag_crisis_message failed: {e}')
-    return 'CRISIS_FLAGGED'
+    return CRISIS_REPLY
 
 
 @tool

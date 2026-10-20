@@ -21,6 +21,7 @@ import {
   addDoc,
   updateDoc,
   where,
+  onSnapshot,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
@@ -997,6 +998,7 @@ onAuthStateChanged(auth, async (user) => {
   } else {
     currentUser = user;
     usernameEl.textContent = user.email.split("@")[0];
+    listenForNotifications(user.uid);
   }
 
   // Set today's date as default
@@ -1990,7 +1992,8 @@ sendChat.addEventListener('click', () => {
 
     const todayKey = getFormattedDate(new Date());
     const messageData = {
-      message,
+      // Crisis text is not shown to peers; a support notice takes its place
+      message: containsCrisisWord(message) ? PEER_CRISIS_NOTICE : message,
       timestamp: Date.now(),
       color: (typeof userColor !== 'undefined') ? userColor : '#00d4ff',
       user: (typeof userName !== 'undefined') ? userName : 'User'
@@ -2157,17 +2160,23 @@ function containsCrisisWord(message) {
   return CRISIS_PATTERNS.some((re) => re.test(text));
 }
 
+const PEER_CRISIS_NOTICE = 'Our support team has been alerted and someone will connect with you soon. You are not alone. 💙';
+
 async function flagCrisisMessage(uid, message) {
   try {
     const user = auth.currentUser;
+    const now = new Date();
     await addDoc(collection(db, 'therapist_cases'), {
-      therapist_id: 'any',
+      user_id: uid,
       ...(user ? patientIdentity(user) : { patient_id: uid, patient_uid: uid, patient_name: 'Anonymous', patient_email: 'No email' }),
       type: 'crisis',
       source: 'peer_chat',
+      message,
       trigger_message: message,
       status: 'urgent',
-      timestamp: new Date()
+      assigned_to: 'pool',
+      created_at: now,
+      timestamp: now
     });
   } catch (error) {
     console.error('Error flagging crisis message:', error);
@@ -2418,14 +2427,16 @@ async function submitBooking(event) {
   const submitBtn = document.getElementById('booking-submit');
   submitBtn.disabled = true;
   try {
-    // Only one active booking per user per slot
+    // One pending/accepted session per user per date (cancelled/rejected don't count)
+    const date = slotDate(timeslot);
     const existing = await getDocs(query(
       collection(db, 'session_bookings'),
       where('user_id', '==', user.uid),
-      where('timeslot', '==', timeslot)
+      where('date', '==', date),
+      where('status', 'in', ['pending', 'accepted'])
     ));
-    if (existing.docs.some((d) => d.data().status !== 'cancelled')) {
-      alert('You already have a booking for this time slot. Please choose a different time.');
+    if (!existing.empty) {
+      alert('You already have a session on this date. Please choose a different date.');
       return;
     }
 
@@ -2436,6 +2447,7 @@ async function submitBooking(event) {
       therapist_name: selectedTherapist.id === 'any' ? 'First Available' : selectedTherapist.name,
       therapist_id: selectedTherapist.id,
       timeslot,
+      date,
       notes,
       timestamp: new Date(),
       status: 'pending',
@@ -2453,6 +2465,80 @@ async function submitBooking(event) {
   }
 }
 
+// "Today 3PM" / "Tomorrow 10AM" -> "Oct 22, 2026"
+function slotDate(timeslot) {
+  const d = new Date();
+  if (/tomorrow/i.test(timeslot)) d.setDate(d.getDate() + 1);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// ── Notification bell ────────────────────────────────────────────
+
+let unsubscribeNotifications = null;
+
+function listenForNotifications(userId) {
+  if (unsubscribeNotifications) unsubscribeNotifications();
+  const q = query(
+    collection(db, 'user_notifications'),
+    where('user_id', '==', userId),
+    where('read', '==', false)
+  );
+  unsubscribeNotifications = onSnapshot(q, (snapshot) => {
+    const badge = document.getElementById('notif-badge');
+    const list = document.getElementById('notif-dropdown');
+    if (!badge || !list) return;
+
+    const items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const toMillis = (n) => (n.created_at && n.created_at.toMillis ? n.created_at.toMillis() : 0);
+    items.sort((a, b) => toMillis(b) - toMillis(a));
+
+    badge.textContent = items.length;
+    badge.style.display = items.length ? 'flex' : 'none';
+
+    list.textContent = '';
+    if (!items.length) {
+      const empty = document.createElement('div');
+      empty.className = 'notif-empty';
+      empty.textContent = 'No new notifications';
+      list.appendChild(empty);
+      return;
+    }
+    items.forEach((n) => {
+      const rejected = n.status === 'rejected';
+      const item = document.createElement('div');
+      item.className = 'notif-item ' + (rejected ? 'rejected' : 'accepted');
+      const text = document.createElement('div');
+      text.textContent = n.message || '';
+      item.appendChild(text);
+      if (rejected) {
+        const again = document.createElement('button');
+        again.className = 'notif-rebook';
+        again.textContent = 'Book Again';
+        item.appendChild(again);
+      }
+      item.addEventListener('click', () => handleNotificationClick(n));
+      list.appendChild(item);
+    });
+  }, (error) => console.error('Notification listener error:', error));
+}
+
+async function handleNotificationClick(n) {
+  try {
+    await updateDoc(doc(db, 'user_notifications', n.id), { read: true });
+  } catch (error) {
+    console.error('Error marking notification read:', error);
+  }
+  if (n.status === 'rejected') {
+    document.getElementById('notif-dropdown').style.display = 'none';
+    openBookingModal();
+  }
+}
+
+function toggleNotifications() {
+  const dd = document.getElementById('notif-dropdown');
+  dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+
 // ── Therapist case management ────────────────────────────────────
 
 function patientIdentity(user) {
@@ -2466,15 +2552,19 @@ function patientIdentity(user) {
 
 async function createChatbotFlagCase(user, triggerMessage, aiResponse) {
   try {
+    const now = new Date();
     await addDoc(collection(db, 'therapist_cases'), {
-      therapist_id: 'any',
+      user_id: user.uid,
       ...patientIdentity(user),
       type: 'crisis',
       source: 'chatbot',
+      message: triggerMessage,
       trigger_message: triggerMessage,
       ai_response: aiResponse,
       status: 'urgent',
-      timestamp: new Date()
+      assigned_to: 'pool',
+      created_at: now,
+      timestamp: now
     });
   } catch (error) {
     console.error('Error creating chatbot flag case:', error);
@@ -2524,5 +2614,5 @@ async function showTherapistOptionsInChat() {
 Object.assign(window, {
   toggleChatbot, sendChatMessage, appendMessage,
   openBookingModal, closeBookingModal, submitBooking, backToTherapists,
-  closeCrisisPopup, connectToTherapist
+  closeCrisisPopup, connectToTherapist, toggleNotifications
 });

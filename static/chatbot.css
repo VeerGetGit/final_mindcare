@@ -232,3 +232,53 @@
   margin-top: 14px; padding: 10px 20px; border: 1px solid #ccd5e0; border-radius: 8px;
   background: #fff; color: #222; font-size: 15px; cursor: pointer;
 }
+
+/* Notification bell */
+.notif-bell {
+  position: fixed;
+  top: 14px;
+  right: 20px;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  font-size: 22px;
+  cursor: pointer;
+  z-index: 9100;
+}
+.notif-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: #e53935;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+.notif-dropdown {
+  position: fixed;
+  top: 64px;
+  right: 20px;
+  width: 300px;
+  max-width: calc(100vw - 40px);
+  max-height: 60vh;
+  overflow-y: auto;
+  background: #fff;
+  color: #222;
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+  z-index: 9100;
+}
+.notif-item { padding: 10px 14px; border-left: 4px solid; cursor: pointer; font-size: 14px; border-bottom: 1px solid #eee; }
+.notif-item.accepted { border-left-color: #2e9e4f; background: #f0faf3; }
+.notif-item.rejected { border-left-color: #e53935; background: #fdf1f0; }
+.notif-rebook { margin-top: 6px; padding: 4px 10px; border: none; border-radius: 6px; background: #1e88e5; color: #fff; cursor: pointer; }
+.notif-empty { padding: 14px; color: #777; font-size: 14px; }

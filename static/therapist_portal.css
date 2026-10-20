@@ -291,3 +291,7 @@ body {
 .tp-status-badge.urgent { background: var(--danger); color: #fff; }
 .tp-status-badge.pending { background: rgba(243,156,18,0.12); color: #B7770D; }
 .tp-status-badge.confirmed, .tp-status-badge.resolved { background: rgba(39,174,96,0.12); color: #1E8449; }
+.tp-status-badge.accepted { background: rgba(39,174,96,0.12); color: #1E8449; }
+.tp-status-badge.rejected { background: rgba(231,76,60,0.12); color: var(--danger); }
+.tp-status-badge.in_progress { background: rgba(52,152,219,0.12); color: #2471A3; }
+.tp-booking-result { font-weight: 700; font-size: 14px; align-self: center; }

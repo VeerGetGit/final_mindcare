@@ -351,6 +351,55 @@ def therapist_cases(therapist_id):
         return jsonify({"error": "Could not load cases."}), 500
 
 
+@app.route('/api/admin/expire-pending')
+def expire_pending_bookings():
+    """Reject session_bookings still pending after 24h and notify the patient.
+
+    Meant for a cron job or manual call. If ADMIN_TASK_TOKEN is set in the environment,
+    the request must include ?token=<value>.
+    """
+    expected = os.getenv('ADMIN_TASK_TOKEN')
+    if expected and request.args.get('token') != expected:
+        return jsonify({"error": "Forbidden"}), 403
+    fs = _get_firestore()
+    if fs is None:
+        return jsonify({"error": "Firestore is not configured on the server."}), 503
+    try:
+        from firebase_admin import firestore
+        cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=24)
+        expired = 0
+        for doc in fs.collection("session_bookings").where("status", "==", "pending").stream():
+            b = doc.to_dict() or {}
+            created = b.get("timestamp") or b.get("created_at")
+            if not created or not hasattr(created, "tzinfo"):
+                continue
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=datetime.timezone.utc)
+            if created > cutoff:
+                continue
+            doc.reference.update({"status": "rejected"})
+            if b.get("user_id"):
+                fs.collection("user_notifications").add({
+                    "user_id": b["user_id"],
+                    "type": "booking_update",
+                    "status": "rejected",
+                    "therapist_name": b.get("therapist_name", ""),
+                    "timeslot": b.get("timeslot", ""),
+                    "date": b.get("date", ""),
+                    "read": False,
+                    "message": "Your session request expired as no response was received. "
+                               "You can book a new session.",
+                    "created_at": firestore.SERVER_TIMESTAMP,
+                })
+            expired += 1
+        return jsonify({"expired": expired})
+    except Exception:
+        import traceback
+        print("ERROR: expire-pending failed:")
+        traceback.print_exc()
+        return jsonify({"error": "Could not expire bookings."}), 500
+
+
 @app.route('/api/patient/chat', methods=['POST'])
 def patient_chat():
     try:
@@ -386,8 +435,8 @@ def patient_chat():
             return jsonify({"response": info, "flagged": False, "handled": True, "api_call": False})
 
         if msg_type == "crisis":
-            flag_crisis_message.invoke({"user_id": user_id, "message": message})
-            resources = get_crisis_resources.invoke({})
+            support = flag_crisis_message.invoke({"user_id": user_id, "message": message})
+            resources = support + "\n\n" + get_crisis_resources.invoke({})
             save_message(user_id, 'user', message)
             save_message(user_id, 'bot', resources)
             return jsonify({"response": resources, "flagged": True, "handled": True, "api_call": False})
@@ -414,7 +463,7 @@ def patient_chat():
                 break
         ai_response = ai_response.strip() or "I'm here with you. Could you tell me a little more?"
 
-        flagged = "CRISIS_FLAGGED" in str(result["messages"])
+        flagged = any(getattr(m, "name", None) == "flag_crisis_message" for m in result["messages"])
         save_message(user_id, 'bot', ai_response)
 
         return jsonify({"response": ai_response, "flagged": flagged, "handled": True, "api_call": True})
