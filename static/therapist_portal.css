@@ -295,3 +295,4 @@ body {
 .tp-status-badge.rejected { background: rgba(231,76,60,0.12); color: var(--danger); }
 .tp-status-badge.in_progress { background: rgba(52,152,219,0.12); color: #2471A3; }
 .tp-booking-result { font-weight: 700; font-size: 14px; align-self: center; }
+.tp-home-btn { padding: 6px 12px; font-size: 13px; margin-right: 12px; }

@@ -412,8 +412,7 @@ def patient_chat():
 
         # Imported lazily so the rest of the app still runs if agent deps are missing.
         from agent import (classify_message, SIMPLE_RESPONSES, agent, get_chat_history,
-                           save_message, get_mindcare_info, flag_crisis_message,
-                           get_crisis_resources)
+                           save_message, get_mindcare_info, flag_crisis_message)
         from langchain_core.messages import AIMessage, HumanMessage
         from groq import RateLimitError
 
@@ -435,8 +434,7 @@ def patient_chat():
             return jsonify({"response": info, "flagged": False, "handled": True, "api_call": False})
 
         if msg_type == "crisis":
-            support = flag_crisis_message.invoke({"user_id": user_id, "message": message})
-            resources = support + "\n\n" + get_crisis_resources.invoke({})
+            resources = flag_crisis_message.invoke({"user_id": user_id, "message": message})
             save_message(user_id, 'user', message)
             save_message(user_id, 'bot', resources)
             return jsonify({"response": resources, "flagged": True, "handled": True, "api_call": False})
@@ -463,7 +461,11 @@ def patient_chat():
                 break
         ai_response = ai_response.strip() or "I'm here with you. Could you tell me a little more?"
 
-        flagged = any(getattr(m, "name", None) == "flag_crisis_message" for m in result["messages"])
+        crisis_msgs = [m for m in result["messages"] if getattr(m, "name", None) == "flag_crisis_message"]
+        flagged = bool(crisis_msgs)
+        if flagged:
+            # Show only what the crisis tool returned, whatever the model wrote around it
+            ai_response = str(crisis_msgs[-1].content)
         save_message(user_id, 'bot', ai_response)
 
         return jsonify({"response": ai_response, "flagged": flagged, "handled": True, "api_call": True})

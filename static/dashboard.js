@@ -1987,7 +1987,6 @@ sendChat.addEventListener('click', () => {
     if (containsCrisisWord(message)) {
       const uid = auth.currentUser ? auth.currentUser.uid : 'anonymous';
       flagCrisisMessage(uid, message);
-      showCrisisPopup();
     }
 
     const todayKey = getFormattedDate(new Date());
@@ -2160,7 +2159,7 @@ function containsCrisisWord(message) {
   return CRISIS_PATTERNS.some((re) => re.test(text));
 }
 
-const PEER_CRISIS_NOTICE = 'Our support team has been alerted and someone will connect with you soon. You are not alone. 💙';
+const PEER_CRISIS_NOTICE = 'Someone from our support team will connect with you shortly. You are not alone. 💙';
 
 async function flagCrisisMessage(uid, message) {
   try {
@@ -2181,21 +2180,6 @@ async function flagCrisisMessage(uid, message) {
   } catch (error) {
     console.error('Error flagging crisis message:', error);
   }
-}
-
-function showCrisisPopup() {
-  document.getElementById('crisis-popup').style.display = 'flex';
-}
-
-function closeCrisisPopup() {
-  document.getElementById('crisis-popup').style.display = 'none';
-}
-
-function connectToTherapist() {
-  closeCrisisPopup();
-  const card = document.getElementById('therapist-booking-card');
-  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  openBookingModal();
 }
 
 // ── Patient AI chatbot ───────────────────────────────────────────
@@ -2359,16 +2343,112 @@ function buildTherapistCard(therapist, className, onClick, showBadge = true) {
   return card;
 }
 
+// Booking modal steps: 0 = date, 1 = therapist, 2 = time slot + notes
+let selectedBookingDate = null; // e.g. "Oct 22, 2026"
+let selectedDateObj = null;
+let calendarMonth = null; // first day of the month being shown
+let preselectedTherapist = null;
+
+const BOOKING_SLOTS = [{ label: '10AM', hour: 10 }, { label: '2PM', hour: 14 }, { label: '3PM', hour: 15 },
+  { label: '4PM', hour: 16 }, { label: '5PM', hour: 17 }];
+
+function formatBookingDate(d) {
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function showBookingStep(step) {
+  document.getElementById('booking-step-date').style.display = step === 0 ? 'block' : 'none';
+  document.getElementById('booking-step-therapists').style.display = step === 1 ? 'block' : 'none';
+  document.getElementById('booking-form').style.display = step === 2 ? 'block' : 'none';
+}
+
+function renderCalendar() {
+  const grid = document.getElementById('cal-grid');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const year = calendarMonth.getFullYear();
+  const month = calendarMonth.getMonth();
+
+  document.getElementById('cal-title').textContent =
+    calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  // No point going back before the current month
+  document.getElementById('cal-prev').disabled =
+    year === today.getFullYear() && month === today.getMonth();
+
+  grid.textContent = '';
+  const leading = (new Date(year, month, 1).getDay() + 6) % 7; // Monday-first
+  for (let i = 0; i < leading; i++) grid.appendChild(document.createElement('span'));
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(year, month, day);
+    const cell = document.createElement('button');
+    cell.type = 'button';
+    cell.className = 'cal-day';
+    cell.textContent = day;
+    if (date < today) {
+      cell.disabled = true;
+      cell.classList.add('past');
+    } else {
+      if (date.getTime() === today.getTime()) cell.classList.add('today');
+      if (selectedDateObj && date.getTime() === selectedDateObj.getTime()) cell.classList.add('selected');
+      cell.addEventListener('click', () => {
+        selectedDateObj = date;
+        selectedBookingDate = formatBookingDate(date);
+        document.getElementById('booking-date-next').style.display = 'inline-block';
+        renderCalendar();
+      });
+    }
+    grid.appendChild(cell);
+  }
+}
+
+function shiftCalendar(delta) {
+  calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + delta, 1);
+  renderCalendar();
+}
+document.getElementById('cal-prev').addEventListener('click', () => shiftCalendar(-1));
+document.getElementById('cal-next').addEventListener('click', () => shiftCalendar(1));
+
+// Step 0 -> step 1 (or straight to step 2 if a therapist was already chosen, e.g. from the chatbot)
+function goToBookingStep() {
+  if (!selectedBookingDate) return;
+  if (preselectedTherapist) {
+    selectTherapist(preselectedTherapist);
+  } else {
+    showBookingStep(1);
+    renderBookingTherapists();
+  }
+}
+
+function backToDate() {
+  showBookingStep(0);
+}
+
+function fillTimeSlots() {
+  const select = document.getElementById('booking-timeslot');
+  select.textContent = '';
+  select.appendChild(new Option('Select a time slot', ''));
+  const now = new Date();
+  const isToday = selectedDateObj && selectedDateObj.toDateString() === now.toDateString();
+  BOOKING_SLOTS.forEach((slot) => {
+    const opt = new Option(slot.label, slot.label);
+    if (isToday && slot.hour <= now.getHours()) opt.disabled = true; // already passed
+    select.appendChild(opt);
+  });
+}
+
 function selectTherapist(therapist) {
   selectedTherapist = therapist;
   document.getElementById('booking-therapist-name').textContent = therapist.name;
-  document.getElementById('booking-step-therapists').style.display = 'none';
-  document.getElementById('booking-form').style.display = 'block';
+  document.getElementById('booking-date-label').textContent = selectedBookingDate;
+  fillTimeSlots();
+  showBookingStep(2);
 }
 
-function backToTherapists() {
-  document.getElementById('booking-form').style.display = 'none';
-  document.getElementById('booking-step-therapists').style.display = 'block';
+async function backToTherapists() {
+  showBookingStep(1);
+  await renderBookingTherapists();
 }
 
 async function renderBookingTherapists() {
@@ -2390,18 +2470,20 @@ async function renderBookingTherapists() {
   });
 }
 
-// Optionally pass a therapist ({ id, name }) to skip straight to the booking details.
+// Always starts at step 0 (date). Pass a therapist ({ id, name }) to skip the therapist step later.
 function openBookingModal(therapist) {
   document.getElementById('booking-success').style.display = 'none';
   document.getElementById('booking-modal').style.display = 'flex';
   document.getElementById('booking-form').reset();
-  if (therapist && therapist.id) {
-    selectTherapist(therapist);
-  } else {
-    selectedTherapist = null;
-    backToTherapists();
-    renderBookingTherapists();
-  }
+  preselectedTherapist = therapist && therapist.id ? therapist : null;
+  selectedTherapist = null;
+  selectedBookingDate = null;
+  selectedDateObj = null;
+  document.getElementById('booking-date-next').style.display = 'none';
+  const now = new Date();
+  calendarMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  renderCalendar();
+  showBookingStep(0);
 }
 
 function closeBookingModal() {
@@ -2413,6 +2495,10 @@ async function submitBooking(event) {
   const user = auth.currentUser;
   if (!user) {
     alert('Please log in to book a session.');
+    return;
+  }
+  if (!selectedBookingDate) {
+    showBookingStep(0);
     return;
   }
   if (!selectedTherapist) {
@@ -2428,7 +2514,7 @@ async function submitBooking(event) {
   submitBtn.disabled = true;
   try {
     // One pending/accepted session per user per date (cancelled/rejected don't count)
-    const date = slotDate(timeslot);
+    const date = selectedBookingDate;
     const existing = await getDocs(query(
       collection(db, 'session_bookings'),
       where('user_id', '==', user.uid),
@@ -2436,7 +2522,8 @@ async function submitBooking(event) {
       where('status', 'in', ['pending', 'accepted'])
     ));
     if (!existing.empty) {
-      alert('You already have a session on this date. Please choose a different date.');
+      alert('You already have a session on this date. Please pick a different date.');
+      showBookingStep(0);
       return;
     }
 
@@ -2463,13 +2550,6 @@ async function submitBooking(event) {
   } finally {
     submitBtn.disabled = false;
   }
-}
-
-// "Today 3PM" / "Tomorrow 10AM" -> "Oct 22, 2026"
-function slotDate(timeslot) {
-  const d = new Date();
-  if (/tomorrow/i.test(timeslot)) d.setDate(d.getDate() + 1);
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 // ── Notification bell ────────────────────────────────────────────
@@ -2614,5 +2694,6 @@ async function showTherapistOptionsInChat() {
 Object.assign(window, {
   toggleChatbot, sendChatMessage, appendMessage,
   openBookingModal, closeBookingModal, submitBooking, backToTherapists,
-  closeCrisisPopup, connectToTherapist, toggleNotifications
+  toggleNotifications,
+  goToBookingStep, backToDate
 });

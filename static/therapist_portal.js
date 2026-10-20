@@ -3,7 +3,7 @@ import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/fi
 import {
   getFirestore, doc, collection,
   addDoc, getDoc, getDocs, updateDoc, deleteDoc,
-  query, orderBy, where, runTransaction, serverTimestamp
+  query, orderBy, where, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -440,16 +440,6 @@ document.getElementById("tp-cases-btn").addEventListener("click", () => {
   }
 });
 
-function showCasesTab(which) {
-  const bookings = which === "bookings";
-  document.getElementById("cases-bookings").style.display = bookings ? "flex" : "none";
-  document.getElementById("cases-alerts").style.display = bookings ? "none" : "flex";
-  document.getElementById("cases-tab-bookings").classList.toggle("active", bookings);
-  document.getElementById("cases-tab-alerts").classList.toggle("active", !bookings);
-}
-document.getElementById("cases-tab-bookings").addEventListener("click", () => showCasesTab("bookings"));
-document.getElementById("cases-tab-alerts").addEventListener("click", () => showCasesTab("alerts"));
-
 function caseTime(c) {
   const t = c.timestamp;
   return t && t.toDate ? t.toDate() : (t ? new Date(t) : null);
@@ -469,28 +459,14 @@ async function fetchBookings() {
   return [...byId.values()].sort((a, b) => (caseTime(b) || 0) - (caseTime(a) || 0));
 }
 
-async function fetchCrisisCases() {
-  // Unclaimed crisis alerts only; claiming one removes it from every therapist's pool view
-  const snap = await getDocs(query(
-    collection(db, "therapist_cases"),
-    where("type", "==", "crisis"),
-    where("assigned_to", "==", "pool")
-  ));
-  const cases = [];
-  snap.forEach(d => cases.push({ id: d.id, ...d.data() }));
-  return cases.sort((a, b) => (caseTime(b) || 0) - (caseTime(a) || 0));
-}
-
 async function loadCases() {
   const bookingsEl = document.getElementById("cases-bookings");
-  const alertsEl = document.getElementById("cases-alerts");
-  bookingsEl.textContent = alertsEl.textContent = "Loading...";
+  bookingsEl.textContent = "Loading...";
   try {
     renderBookings(bookingsEl, await fetchBookings());
-    renderCrisisCases(alertsEl, await fetchCrisisCases());
   } catch (e) {
     console.error("Error loading cases:", e);
-    bookingsEl.textContent = alertsEl.textContent = "Error loading cases.";
+    bookingsEl.textContent = "Error loading cases.";
   }
 }
 
@@ -629,57 +605,6 @@ function renderBookings(container, bookings) {
   });
 }
 
-async function claimCrisisCase(c, card, container) {
-  try {
-    // Transaction so two therapists can't both claim the same alert
-    await runTransaction(db, async (tx) => {
-      const ref = doc(db, "therapist_cases", c.id);
-      const snap = await tx.get(ref);
-      if (!snap.exists() || snap.data().assigned_to !== "pool") throw new Error("Already claimed by another therapist");
-      tx.update(ref, { assigned_to: currentTherapistId, assigned_name: currentTherapistName, status: "in_progress" });
-    });
-    card.remove();
-    if (!container.children.length) container.textContent = "No crisis alerts.";
-    showToast("You are now connected with this patient", "success");
-  } catch (e) {
-    card.remove();
-    showToast(e.message, "error");
-  }
-}
-
-function renderCrisisCases(container, cases) {
-  container.textContent = "";
-  if (!cases.length) {
-    container.textContent = "No crisis alerts.";
-    return;
-  }
-  cases.forEach(c => {
-    const card = document.createElement("div");
-    card.className = "tp-case-card";
-
-    const badge = document.createElement("span");
-    setStatusBadge(badge, "urgent");
-    card.appendChild(badge);
-
-    card.appendChild(patientBlock(c));
-    const meta = document.createElement("div");
-    meta.className = "tp-case-meta";
-    meta.textContent = timeLine(c, "created_at") || timeLine(c, "timestamp");
-    card.appendChild(meta);
-    addLine(card, "Message", c.message || c.trigger_message);
-
-    const actions = document.createElement("div");
-    actions.className = "tp-case-actions";
-    const handleBtn = document.createElement("button");
-    handleBtn.className = "tp-btn tp-btn-primary";
-    handleBtn.textContent = "🙋 I'll Handle This";
-    handleBtn.addEventListener("click", () => claimCrisisCase(c, card, container));
-    actions.appendChild(handleBtn);
-    card.appendChild(actions);
-    container.appendChild(card);
-  });
-}
-
 async function showChatHistory(c) {
   const patientId = c.patient_id || c.patient_uid || c.user_id;
   const modal = document.getElementById("chat-history-modal");
@@ -733,4 +658,9 @@ async function showChatHistory(c) {
 
 document.getElementById("close-chat-history-modal").addEventListener("click", () => {
   document.getElementById("chat-history-modal").style.display = "none";
+});
+
+// ── HOME ──────────────────────────────────────────────────────────────────────
+document.getElementById("tp-home-btn").addEventListener("click", () => {
+  window.location.href = "/";
 });

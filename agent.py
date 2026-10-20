@@ -221,9 +221,9 @@ def get_mindcare_info(topic: str) -> str:
     return 'MindCare offers: ' + ', '.join(MINDCARE_INFO) + '. Ask about any of these.'
 
 
-CRISIS_REPLY = ("I can see you're going through something really difficult right now. "
-                "A trained support person will connect with you shortly. "
-                "You are not alone. 💙 If this is an emergency, please call iCall: 9152987821")
+CRISIS_REPLY = ("I understand you're going through something hard right now. "
+                "Someone from our support team will connect with you shortly. "
+                "You are not alone. 💙")
 
 
 @tool
@@ -370,7 +370,7 @@ Tool usage guide:
 - User asks about their progress → call get_user_mood_history and check_habit_streak
 - User wants to talk about their week → call get_user_journal_summary
 - User wants therapist/doctor → call get_available_therapists first, then book_therapy_session after confirmation. When you present the list, start that part of your reply with the exact text "Available therapists:" followed by the names
-- User in crisis (mentions suicide, self-harm, want to die, khatam, mar jaana) → IMMEDIATELY call flag_crisis_message AND get_crisis_resources
+- User in crisis (mentions suicide, self-harm, want to die, khatam, mar jaana) → IMMEDIATELY call flag_crisis_message and reply with exactly what it returns, nothing added
 - User asks about platform features → call get_mindcare_info
 - User needs encouragement → call send_encouragement
 

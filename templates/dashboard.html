@@ -289,20 +289,35 @@
         <div class="mc-modal">
             <button class="mc-modal-close" onclick="closeBookingModal()" aria-label="Close">&times;</button>
             <h2>Book a Session</h2>
-            <div id="booking-step-therapists">
+            <div id="booking-step-date">
+                <p class="mc-hint">Pick a date for your session.</p>
+                <div class="cal-header">
+                    <button type="button" id="cal-prev" class="cal-nav" aria-label="Previous month">&lsaquo;</button>
+                    <span id="cal-title"></span>
+                    <button type="button" id="cal-next" class="cal-nav" aria-label="Next month">&rsaquo;</button>
+                </div>
+                <div class="cal-weekdays">
+                    <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                </div>
+                <div id="cal-grid" class="cal-grid"></div>
+                <div class="mc-btn-row">
+                    <button type="button" id="booking-date-next" class="mc-primary-btn" style="display:none;"
+                        onclick="goToBookingStep()">Next &rarr;</button>
+                </div>
+            </div>
+            <div id="booking-step-therapists" style="display:none;">
                 <p class="mc-hint">Choose who you'd like to talk to.</p>
                 <div id="booking-therapist-list" class="mc-therapist-list"></div>
+                <div class="mc-btn-row">
+                    <button type="button" class="mc-secondary-btn" onclick="backToDate()">Back</button>
+                </div>
             </div>
             <form id="booking-form" onsubmit="submitBooking(event)" style="display:none;">
                 <div class="mc-selected-therapist">With: <strong id="booking-therapist-name"></strong></div>
+                <div class="mc-selected-therapist">Date: <strong id="booking-date-label"></strong></div>
                 <label for="booking-timeslot">Select a time slot</label>
                 <select id="booking-timeslot" required>
                     <option value="">Select a time slot</option>
-                    <option value="Today 3PM">Today 3PM</option>
-                    <option value="Today 5PM">Today 5PM</option>
-                    <option value="Tomorrow 10AM">Tomorrow 10AM</option>
-                    <option value="Tomorrow 2PM">Tomorrow 2PM</option>
-                    <option value="Tomorrow 4PM">Tomorrow 4PM</option>
                 </select>
                 <label for="booking-notes">What would you like to discuss?</label>
                 <textarea id="booking-notes" rows="4"></textarea>
@@ -314,15 +329,6 @@
             <div id="booking-success" class="mc-success" style="display:none;">
                 Session booked! Your therapist will confirm shortly.
             </div>
-        </div>
-    </div>
-
-    <!-- Crisis support popup (peer chat filter) -->
-    <div id="crisis-popup" class="mc-modal-backdrop" style="display:none;">
-        <div class="mc-modal">
-            <button class="mc-modal-close" onclick="closeCrisisPopup()" aria-label="Close">&times;</button>
-            <p>We noticed your message. If you're struggling, please reach out to a counselor.</p>
-            <button class="mc-primary-btn" onclick="connectToTherapist()">Connect Now</button>
         </div>
     </div>
 
