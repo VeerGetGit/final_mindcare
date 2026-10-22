@@ -434,3 +434,40 @@ a:focus {
     --text-medium: #b0b0b0;
   }
 }
+/* ════════════ Dark navy theme (matches dashboard + therapist portal) ════════════ */
+body { background: #0a0f1e; color: #f0f4ff; font-family: 'Inter', 'Lato', -apple-system, sans-serif; }
+body::before, body::after { opacity: 0.2; }
+.login-container {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+.login-container h1, .login-container h2, .login-container h3 { color: #f0f4ff; }
+.login-container p { color: #94a3b8; }
+label { color: #94a3b8; }
+input {
+  background: rgba(255, 255, 255, 0.05);
+  color: #f0f4ff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+input::placeholder { color: #475569; }
+input:focus {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+input:focus + label, input:not(:placeholder-shown) + label { color: #60a5fa; }
+button { background: linear-gradient(135deg, #1e40af, #3b82f6); box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3); }
+button:hover { box-shadow: 0 12px 35px rgba(59, 130, 246, 0.4); }
+.signup-link, .signup-link a, .login-container a { color: #60a5fa; }
+:root {
+  --primary-purple: #60a5fa;
+  --secondary-purple: #3b82f6;
+  --light-purple: #1e40af;
+  --accent-peach: #06b6d4;
+  --gradient-purple: linear-gradient(135deg, #1e40af, #3b82f6);
+  --gradient-peach: linear-gradient(135deg, #0f766e, #06b6d4);
+}
+button { color: #fff; }

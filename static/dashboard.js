@@ -530,6 +530,8 @@ function updateHabitDisplay() {
       if (meditationButton) meditationButton.classList.remove('completed');
     }
   }
+
+  refreshVitals();
 }
 
 // Update habit progress
@@ -999,7 +1001,9 @@ onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     usernameEl.textContent = user.email.split("@")[0];
     listenForNotifications(user.uid);
+    startDashboardWidgets(user.uid);
   }
+  applyIdentity(currentUser);
 
   // Set today's date as default
   const today = new Date().toISOString().split("T")[0];
@@ -2184,27 +2188,98 @@ async function flagCrisisMessage(uid, message) {
 
 // ── Patient AI chatbot ───────────────────────────────────────────
 
+function chatUserName() {
+  const u = auth.currentUser;
+  return (u && (u.displayName || (u.email || '').split('@')[0])) || 'there';
+}
+
 function toggleChatbot() {
   const win = document.getElementById('chatbot-window');
   const opening = win.style.display === 'none';
   win.style.display = opening ? 'flex' : 'none';
   if (opening) {
+    win.classList.remove('minimized');
     const messages = document.getElementById('chatbot-messages');
     if (!messages.children.length) {
-      appendMessage('bot', "Hi, I'm MindCare. How are you feeling today?");
+      appendMessage('bot', `Hi ${chatUserName()}! 👋 I'm your MindCare AI companion. How are you feeling today? I'm here to listen, support, and help connect you with the right care.`);
     }
     document.getElementById('chatbot-input').focus();
   }
 }
 
+function minimizeChatbot() {
+  document.getElementById('chatbot-window').classList.toggle('minimized');
+}
+
+function chatRow(sender) {
+  const row = document.createElement('div');
+  row.className = `chatbot-row ${sender}`;
+  const avatar = document.createElement('div');
+  avatar.className = 'chatbot-avatar';
+  avatar.textContent = sender === 'user' ? chatUserName().charAt(0).toUpperCase() : 'AI';
+  row.appendChild(avatar);
+  return row;
+}
+
 function appendMessage(sender, text) {
   const messages = document.getElementById('chatbot-messages');
-  const div = document.createElement('div');
-  div.className = `chatbot-msg ${sender}`;
-  div.textContent = text;
-  messages.appendChild(div);
+  const row = chatRow(sender);
+  const col = document.createElement('div');
+  col.className = 'chatbot-col';
+  const bubble = document.createElement('div');
+  bubble.className = `chatbot-msg ${sender}`;
+  bubble.textContent = text;
+  const time = document.createElement('div');
+  time.className = 'chatbot-time';
+  time.textContent = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  col.append(bubble, time);
+  row.appendChild(col);
+  messages.appendChild(row);
   messages.scrollTop = messages.scrollHeight;
 }
+
+function showTyping() {
+  hideTyping();
+  const messages = document.getElementById('chatbot-messages');
+  const row = chatRow('bot');
+  row.id = 'chatbot-typing';
+  const bubble = document.createElement('div');
+  bubble.className = 'chatbot-msg bot typing';
+  bubble.innerHTML = '<span></span><span></span><span></span>';
+  row.appendChild(bubble);
+  messages.appendChild(row);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function hideTyping() {
+  const el = document.getElementById('chatbot-typing');
+  if (el) el.remove();
+}
+
+// Quick-reply chips
+function chatbotQuick(kind) {
+  if (kind === 'breathing') {
+    document.getElementById('chatbot-input').value = 'Start breathing exercise';
+    sendChatMessage();
+  } else if (kind === 'book') {
+    openBookingModal();
+  } else if (kind === 'mood') {
+    document.getElementById('chatbot-window').style.display = 'none';
+    switchView('wellness');
+    const form = document.getElementById('mood-form');
+    if (form) form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+// Mood strip: picks a mood and drafts a message (nothing is sent until the user does)
+document.getElementById('chatbot-mood-strip').addEventListener('click', (e) => {
+  const pill = e.target.closest('.mood-pill');
+  if (!pill) return;
+  document.querySelectorAll('#chatbot-mood-strip .mood-pill').forEach((p) => p.classList.toggle('active', p === pill));
+  const input = document.getElementById('chatbot-input');
+  input.value = `I'm feeling ${pill.dataset.mood} today`;
+  input.focus();
+});
 
 async function sendChatMessage() {
   const input = document.getElementById('chatbot-input');
@@ -2222,6 +2297,7 @@ async function sendChatMessage() {
   input.value = '';
 
   sendBtn.disabled = true;
+  showTyping();
 
   try {
     const res = await fetch('/api/patient/chat', {
@@ -2232,6 +2308,7 @@ async function sendChatMessage() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Request failed');
 
+    hideTyping();
     appendMessage('bot', data.response);
     // The agent lists therapists in text; add clickable cards when it does.
     if (data.response.includes(THERAPIST_LIST_MARKER)) {
@@ -2257,6 +2334,7 @@ async function sendChatMessage() {
     console.error('Chatbot error:', error);
     appendMessage('bot', "Sorry, I couldn't respond just now. Please try again.");
   } finally {
+    hideTyping();
     sendBtn.disabled = false;
     input.focus();
   }
@@ -2309,34 +2387,51 @@ function normalizeStatus(status) {
   return STATUS_BADGES[s] ? s : 'available';
 }
 
+function therapistInitials(name) {
+  return (name || '').replace(/^dr\.?\s+/i, '').split(/\s+/)
+    .filter((w) => /^[A-Za-z]/.test(w)).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || 'T';
+}
+
 function buildTherapistCard(therapist, className, onClick, showBadge = true) {
   const card = document.createElement('div');
   card.className = className;
   card.tabIndex = 0;
   const badge = STATUS_BADGES[normalizeStatus(therapist.status)];
 
+  const avatar = document.createElement('div');
+  avatar.className = 'tc-avatar';
+  avatar.textContent = therapistInitials(therapist.name);
+  card.appendChild(avatar);
+
+  const text = document.createElement('div');
+  text.className = 'tc-text';
   const name = document.createElement('div');
   name.className = 'mc-therapist-name';
   name.textContent = therapist.name;
-  card.appendChild(name);
+  text.appendChild(name);
 
   if (therapist.specialization) {
     const spec = document.createElement('div');
     spec.className = 'mc-therapist-spec';
     spec.textContent = therapist.specialization;
-    card.appendChild(spec);
+    text.appendChild(spec);
   }
-
-  if (!showBadge) {
-    card.addEventListener('click', onClick);
-    card.addEventListener('keydown', (e) => { if (e.key === 'Enter') onClick(); });
-    return card;
+  if (therapist.rating) {
+    // Only shown when the therapist document actually has a rating
+    const stars = document.createElement('div');
+    stars.className = 'mc-stars';
+    const n = Math.max(0, Math.min(5, Math.round(Number(therapist.rating))));
+    stars.textContent = '★'.repeat(n) + '☆'.repeat(5 - n);
+    text.appendChild(stars);
   }
+  card.appendChild(text);
 
-  const badgeEl = document.createElement('span');
-  badgeEl.className = `mc-badge ${therapist.badgeClass || badge.cls}`;
-  badgeEl.textContent = therapist.badgeLabel || badge.label;
-  card.appendChild(badgeEl);
+  if (showBadge) {
+    const badgeEl = document.createElement('span');
+    badgeEl.className = `mc-badge ${therapist.badgeClass || badge.cls}`;
+    badgeEl.textContent = therapist.badgeLabel || badge.label;
+    card.appendChild(badgeEl);
+  }
 
   card.addEventListener('click', onClick);
   card.addEventListener('keydown', (e) => { if (e.key === 'Enter') onClick(); });
@@ -2360,6 +2455,8 @@ function showBookingStep(step) {
   document.getElementById('booking-step-date').style.display = step === 0 ? 'block' : 'none';
   document.getElementById('booking-step-therapists').style.display = step === 1 ? 'block' : 'none';
   document.getElementById('booking-form').style.display = step === 2 ? 'block' : 'none';
+  document.querySelectorAll('#booking-step-dots .step-dot')
+    .forEach((dot, i) => dot.classList.toggle('active', i === step));
 }
 
 function renderCalendar() {
@@ -2431,10 +2528,24 @@ function fillTimeSlots() {
   select.appendChild(new Option('Select a time slot', ''));
   const now = new Date();
   const isToday = selectedDateObj && selectedDateObj.toDateString() === now.toDateString();
+  const pills = document.getElementById('booking-slots');
+  pills.textContent = '';
   BOOKING_SLOTS.forEach((slot) => {
+    const passed = isToday && slot.hour <= now.getHours(); // already passed today
     const opt = new Option(slot.label, slot.label);
-    if (isToday && slot.hour <= now.getHours()) opt.disabled = true; // already passed
+    opt.disabled = passed;
     select.appendChild(opt);
+
+    const pill = document.createElement('button');
+    pill.type = 'button';
+    pill.className = 'slot-pill';
+    pill.textContent = slot.label;
+    pill.disabled = passed;
+    pill.addEventListener('click', () => {
+      select.value = slot.label;
+      pills.querySelectorAll('.slot-pill').forEach((p) => p.classList.toggle('selected', p === pill));
+    });
+    pills.appendChild(pill);
   });
 }
 
@@ -2508,7 +2619,10 @@ async function submitBooking(event) {
 
   const timeslot = document.getElementById('booking-timeslot').value;
   const notes = document.getElementById('booking-notes').value.trim();
-  if (!timeslot) return;
+  if (!timeslot) {
+    alert('Please pick a time slot.');
+    return;
+  }
 
   const submitBtn = document.getElementById('booking-submit');
   submitBtn.disabled = true;
@@ -2602,12 +2716,16 @@ function listenForNotifications(userId) {
   }, (error) => console.error('Notification listener error:', error));
 }
 
-async function handleNotificationClick(n) {
+async function markRead(id) {
   try {
-    await updateDoc(doc(db, 'user_notifications', n.id), { read: true });
+    await updateDoc(doc(db, 'user_notifications', id), { read: true });
   } catch (error) {
     console.error('Error marking notification read:', error);
   }
+}
+
+async function handleNotificationClick(n) {
+  await markRead(n.id);
   if (n.status === 'rejected') {
     document.getElementById('notif-dropdown').style.display = 'none';
     openBookingModal();
@@ -2669,14 +2787,21 @@ const THERAPIST_LIST_MARKER = 'Available therapists:';
 
 async function showTherapistOptionsInChat() {
   const messages = document.getElementById('chatbot-messages');
+  const toolCard = document.createElement('div');
+  toolCard.className = 'tool-card';
+  const label = document.createElement('div');
+  label.className = 'tool-card-label';
+  label.textContent = 'get_available_therapists';
+  toolCard.appendChild(label);
   const list = document.createElement('div');
   list.className = 'chatbot-therapists';
-  messages.appendChild(list);
+  toolCard.appendChild(list);
+  messages.appendChild(toolCard);
 
   const all = await fetchTherapists();
   const therapists = all.filter((t) => normalizeStatus(t.status) === 'available');
   if (!therapists.length) {
-    list.remove();
+    toolCard.remove();
     appendMessage('bot', all.length
       ? 'No therapists are available right now. Use the Book Session button on the dashboard to book a later slot.'
       : "I couldn't load the therapist list. You can use the Book Session button on the dashboard.");
@@ -2690,10 +2815,257 @@ async function showTherapistOptionsInChat() {
 
 
 
+// ── Sidebar views ────────────────────────────────────────────────
+
+function switchView(name) {
+  document.querySelectorAll('.view').forEach((v) => { v.style.display = v.id === `view-${name}` ? 'block' : 'none'; });
+  document.querySelectorAll('.nav-link[data-view]').forEach((a) => a.classList.toggle('active', a.dataset.view === name));
+  if (name === 'peer') chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+document.querySelectorAll('.nav-link[data-view]').forEach((a) => {
+  a.addEventListener('click', (e) => { e.preventDefault(); switchView(a.dataset.view); });
+});
+document.querySelectorAll('[data-view-link]').forEach((a) => {
+  a.addEventListener('click', (e) => { e.preventDefault(); switchView(a.dataset.viewLink); });
+});
+document.getElementById('nav-assistant').addEventListener('click', (e) => {
+  e.preventDefault();
+  const win = document.getElementById('chatbot-window');
+  if (win.style.display === 'none') toggleChatbot();
+  else win.classList.remove('minimized');
+});
+
+// ── Header identity + greeting ───────────────────────────────────
+
+function applyIdentity(user) {
+  const hour = new Date().getHours();
+  document.getElementById('greeting-text').textContent =
+    hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const name = (user && (user.displayName || (user.email || '').split('@')[0])) || 'User';
+  document.getElementById('sidebar-username').textContent = name;
+  document.getElementById('header-avatar').textContent = name.charAt(0).toUpperCase();
+  if (user && user.uid === 'demo-user') {
+    // Not signed in: the live widgets are not started, so don't leave them on "Loading..."
+    document.getElementById('appt-list').innerHTML = '<div class="empty-note">Log in to see your appointments.</div>';
+    document.getElementById('sessions-list').innerHTML = '<div class="empty-note">Log in to see your sessions.</div>';
+  }
+}
+
+// ── Stat tiles, appointments, sessions ───────────────────────────
+
+let bookingsUnsub = null;
+let moodsUnsub = null;
+let allMoodEntries = [];
+let apptFilter = '';
+
+function startDashboardWidgets(uid) {
+  listenForBookings(uid);
+  listenForMoods(uid);
+}
+
+function bookingDate(b) {
+  const d = new Date(b.date);
+  return isNaN(d) ? null : d;
+}
+
+function buildAppointmentRow(b, specById) {
+  const row = document.createElement('div');
+  row.className = 'appt-row';
+  const avatar = document.createElement('div');
+  avatar.className = 'appt-avatar';
+  avatar.textContent = therapistInitials(b.therapist_name);
+  const info = document.createElement('div');
+  info.className = 'appt-info';
+  const name = document.createElement('div');
+  name.className = 'appt-name';
+  name.textContent = b.therapist_name || 'Therapist';
+  const meta = document.createElement('div');
+  meta.className = 'appt-meta';
+  meta.textContent = specById[b.therapist_id] || b.notes || 'Therapy session';
+  info.append(name, meta);
+
+  const badges = document.createElement('div');
+  badges.className = 'appt-badges';
+  const status = b.status || 'pending';
+  [[b.date, 'badge-date'], [b.timeslot, 'badge-time'], [status, `badge-${status}`]].forEach(([text, cls]) => {
+    if (!text) return;
+    const el = document.createElement('span');
+    el.className = `badge ${cls}`;
+    el.textContent = text;
+    badges.appendChild(el);
+  });
+  row.append(avatar, info, badges);
+  return row;
+}
+
+function applyApptFilter() {
+  document.querySelectorAll('#appt-list .appt-row').forEach((row) => {
+    row.style.display = row.textContent.toLowerCase().includes(apptFilter) ? '' : 'none';
+  });
+}
+document.getElementById('appt-search').addEventListener('input', (e) => {
+  apptFilter = e.target.value.trim().toLowerCase();
+  applyApptFilter();
+});
+
+function listenForBookings(uid) {
+  if (bookingsUnsub) bookingsUnsub();
+  bookingsUnsub = onSnapshot(query(collection(db, 'session_bookings'), where('user_id', '==', uid)), async (snap) => {
+    const bookings = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const active = bookings.filter((b) => ['pending', 'accepted'].includes(b.status || 'pending'));
+    const upcoming = active.filter((b) => { const d = bookingDate(b); return !d || d >= today; })
+      .sort((a, b) => (bookingDate(a) || 0) - (bookingDate(b) || 0));
+    const completed = bookings.filter((b) => { const d = bookingDate(b); return b.status === 'accepted' && d && d < today; });
+
+    document.getElementById('stat-upcoming').textContent = upcoming.length;
+    document.getElementById('stat-completed').textContent = completed.length;
+
+    const specById = {};
+    (await fetchTherapists()).forEach((t) => { specById[t.id] = t.specialization; });
+
+    const apptList = document.getElementById('appt-list');
+    apptList.textContent = '';
+    if (!upcoming.length) {
+      apptList.innerHTML = '<div class="empty-note">No upcoming appointments.</div>';
+    } else {
+      upcoming.slice(0, 4).forEach((b) => apptList.appendChild(buildAppointmentRow(b, specById)));
+    }
+    applyApptFilter();
+
+    const all = document.getElementById('sessions-list');
+    all.textContent = '';
+    if (!bookings.length) {
+      all.innerHTML = '<div class="empty-note">You have no sessions yet. Book one to get started.</div>';
+    } else {
+      const ms = (b) => (b.timestamp && b.timestamp.toMillis ? b.timestamp.toMillis() : 0);
+      bookings.sort((a, b) => ms(b) - ms(a)).forEach((b) => all.appendChild(buildAppointmentRow(b, specById)));
+    }
+  }, (error) => console.error('Bookings listener error:', error));
+}
+
+// ── Mood analytics ───────────────────────────────────────────────
+
+const MOOD_SCORES = { happy: 9, excited: 9, energetic: 8, content: 8, peaceful: 8, calm: 7, tired: 5, anxious: 4, angry: 3, sad: 3 };
+const MOOD_GROUPS = [
+  { label: 'Happy', color: '#3b82f6', moods: ['happy', 'content', 'excited', 'energetic'] },
+  { label: 'Calm', color: '#06b6d4', moods: ['calm', 'peaceful', 'tired'] },
+  { label: 'Anxious', color: '#f59e0b', moods: ['anxious', 'angry'] },
+  { label: 'Sad', color: '#ef4444', moods: ['sad'] }
+];
+
+function listenForMoods(uid) {
+  if (moodsUnsub) moodsUnsub();
+  moodsUnsub = onSnapshot(
+    query(collection(db, 'users', uid, 'moods'), orderBy('timestamp', 'desc'), limit(30)),
+    (snap) => {
+      allMoodEntries = snap.docs.map((d) => d.data().mood).filter(Boolean);
+      renderMoodAnalytics();
+    },
+    (error) => console.error('Mood listener error:', error)
+  );
+}
+
+function renderMoodAnalytics() {
+  const range = Number(document.getElementById('mood-range').value) || 7;
+  const moods = allMoodEntries.slice(0, range);
+  const scored = moods.filter((m) => MOOD_SCORES[m] !== undefined);
+  const avg = scored.length ? scored.reduce((sum, m) => sum + MOOD_SCORES[m], 0) / scored.length : null;
+  const scoreText = avg === null ? '—' : avg.toFixed(1);
+  document.getElementById('mood-score').textContent = scoreText;
+  document.getElementById('stat-mood').textContent = avg === null ? '—' : `${scoreText}/10`;
+
+  const segments = document.getElementById('mood-ring-segments');
+  const legend = document.getElementById('mood-legend');
+  segments.textContent = '';
+  legend.textContent = '';
+  const circumference = 2 * Math.PI * 70;
+  let offset = 0;
+  MOOD_GROUPS.forEach((g) => {
+    const count = moods.filter((m) => g.moods.includes(m)).length;
+    const pct = moods.length ? Math.round((count / moods.length) * 100) : 0;
+    if (count) {
+      const len = (count / moods.length) * circumference;
+      const seg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      seg.setAttribute('cx', 90); seg.setAttribute('cy', 90); seg.setAttribute('r', 70);
+      seg.setAttribute('fill', 'none'); seg.setAttribute('stroke', g.color); seg.setAttribute('stroke-width', 16);
+      seg.setAttribute('stroke-dasharray', `${Math.max(len - 2, 0)} ${circumference - Math.max(len - 2, 0)}`);
+      seg.setAttribute('stroke-dashoffset', -offset);
+      segments.appendChild(seg);
+      offset += len;
+    }
+    const pill = document.createElement('span');
+    pill.className = 'legend-pill';
+    pill.innerHTML = `<span class="legend-dot" style="background:${g.color}"></span>${g.label} ${pct}%`;
+    legend.appendChild(pill);
+  });
+}
+document.getElementById('mood-range').addEventListener('change', renderMoodAnalytics);
+
+// ── Health vitals (from today's habits) ──────────────────────────
+
+function refreshVitals() {
+  const h = currentHabits || {};
+  const set = (id, text, pct) => {
+    document.getElementById(`vital-${id}`).textContent = text;
+    document.getElementById(`vital-${id}-bar`).style.width = `${Math.max(0, Math.min(100, pct))}%`;
+  };
+  const sleep = Number(h.sleep?.value) || 0;
+  const exercise = Number(h.exercise?.value) || 0;
+  const meditation = Number(h.meditation?.value) || 0;
+  const water = Number(h.hydration?.value) || 0;
+  set('sleep', `${sleep}h`, (sleep / 8) * 100);
+  set('activity', `${Math.min(100, Math.round((exercise / 30) * 100))}%`, (exercise / 30) * 100);
+  set('meditation', `${meditation}min`, (meditation / 20) * 100);
+  set('hydration', `${water}/8`, (water / 8) * 100);
+}
+
+// ── Streak tile mirrors the habit tracker's streak ───────────────
+
+const streakEl = document.getElementById('current-streak');
+const mirrorStreak = () => { document.getElementById('stat-streak').textContent = streakEl.textContent || '0'; };
+new MutationObserver(mirrorStreak).observe(streakEl, { childList: true, characterData: true, subtree: true });
+mirrorStreak();
+
+// ── Peer chat preview (last 3 messages from the live chat window) ─
+
+let peerPreviewQueued = false;
+function renderPeerPreview() {
+  peerPreviewQueued = false;
+  const rows = [...chatWindow.children].filter((el) => el.children.length === 2).slice(-3);
+  const box = document.getElementById('peer-preview');
+  box.textContent = '';
+  if (!rows.length) {
+    box.innerHTML = '<div class="empty-note">No messages yet today.</div>';
+    return;
+  }
+  rows.forEach((el) => {
+    const text = el.children[0].textContent || '';
+    const sep = text.indexOf(': ');
+    const user = sep > -1 ? text.slice(0, sep) : 'User';
+    const msg = sep > -1 ? text.slice(sep + 2) : text;
+    const row = document.createElement('div');
+    row.className = 'peer-row';
+    row.innerHTML = '<div class="peer-avatar"></div><div class="peer-body"><div class="peer-name"></div><div class="peer-text"></div></div><div class="peer-time"></div>';
+    row.querySelector('.peer-avatar').textContent = user.charAt(0).toUpperCase();
+    row.querySelector('.peer-name').textContent = user;
+    row.querySelector('.peer-text').textContent = msg;
+    row.querySelector('.peer-time').textContent = el.children[1].textContent || '';
+    box.appendChild(row);
+  });
+}
+new MutationObserver(() => {
+  if (!peerPreviewQueued) { peerPreviewQueued = true; requestAnimationFrame(renderPeerPreview); }
+}).observe(chatWindow, { childList: true });
+
 // dashboard.js is an ES module; expose handlers used by inline onclick attributes
 Object.assign(window, {
   toggleChatbot, sendChatMessage, appendMessage,
   openBookingModal, closeBookingModal, submitBooking, backToTherapists,
-  toggleNotifications,
+  toggleNotifications, markRead, switchView,
+  minimizeChatbot, chatbotQuick,
   goToBookingStep, backToDate
 });

@@ -4,7 +4,9 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mood Dashboard</title>
+    <title>MindCare Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" />
     <link rel="stylesheet" href="/static/dashboard.css" />
     <link rel="stylesheet" href="/static/chatbot.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.3.0/chart.umd.min.js"></script>
@@ -13,194 +15,367 @@
 <body>
     <div class="particles-container"></div>
 
-    <header class="dashboard-header">
-        <div class="profile-container">
-            <img id="profile-pic" class="profile-pic" src="https://via.placeholder.com/100" alt="Profile" />
+    <div class="app-layout">
 
-            <!-- Dropdown -->
-            <div id="profile-dropdown" class="dropdown">
-                <button id="upload-option">📷 Upload Photo</button>
-                <button id="logout">🚪 Logout</button>
+        <!-- ═══════════ SIDEBAR ═══════════ -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 5v14M5 12h14" />
+                    </svg>
+                </div>
+                <span class="logo-text">MindCare</span>
             </div>
 
-            <!-- Hidden file input for image upload -->
-            <input type="file" id="upload-pic" accept="image/*" style="display: none;" />
-        </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-link active" data-view="dashboard">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+                    Dashboard
+                </a>
+                <a href="#" class="nav-link" data-view="sessions">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                    My Sessions
+                </a>
+                <a href="#" class="nav-link" id="nav-assistant" data-action="assistant">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    AI Assistant
+                </a>
+                <a href="#" class="nav-link" data-view="peer">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    Peer Support
+                </a>
+                <a href="#" class="nav-link" data-view="wellness">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    Wellness Tracker
+                </a>
 
-        <nav class="activity">
-            <a href="/yoga" class="nav-link">
-                <span class="nav-icon">🧘‍♀️</span>
-                <span class="nav-text">YOGA</span>
-            </a>
-            <a href="/workout" class="nav-link">
-                <span class="nav-icon">💪</span>
-                <span class="nav-text">WORKOUT</span>
-            </a>
-        </nav>
+                <div class="nav-section">Move</div>
+                <a href="/yoga" class="nav-link">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v6M5 10l7 3 7-3M8 21l4-8 4 8"/></svg>
+                    Yoga
+                </a>
+                <a href="/workout" class="nav-link">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg>
+                    Workout
+                </a>
+            </nav>
 
-        <div>
-            <h1>Welcome, <span id="username">User</span></h1>
-            <p class="user-greeting">Track your moods and journal daily</p>
-        </div>
-        <button id="notif-bell" class="notif-bell" aria-label="Notifications" onclick="toggleNotifications()">
-            🔔
-            <span id="notif-badge" class="notif-badge" style="display:none">0</span>
-        </button>
-        <div id="notif-dropdown" class="notif-dropdown" style="display:none"></div>
-    </header>
-
-
-    <main class="dashboard-content">
-
-        <div class="dashboard-card" id="chat-card">
-            <h2>💬 Peer Support Chat</h2>
-
-            <!-- Chat Room Selector -->
-            <select id="chat-room-selector" class="chat-room-selector">
-                <option value="general">General</option>
-                <option value="anxiety-support">Anxiety Support</option>
-                <option value="motivation-room">Motivation Room</option>
-            </select>
-
-            <!-- Chat Window -->
-            <div id="chat-window" class="chat-window"></div>
-
-            <!-- Chat Input -->
-            <div class="chat-input-section">
-                <input type="text" id="chat-input" class="chat-input" placeholder="Type your message..." />
-                <button id="send-chat" class="chat-send-button">Send</button>
+            <div class="sidebar-user">
+                <div class="profile-container">
+                    <img id="profile-pic" class="profile-pic" src="https://via.placeholder.com/100" alt="Profile" />
+                    <div id="profile-dropdown" class="dropdown hidden">
+                        <button id="upload-option">📷 Upload Photo</button>
+                        <button id="logout">🚪 Logout</button>
+                    </div>
+                    <input type="file" id="upload-pic" accept="image/*" style="display: none;" />
+                </div>
+                <div class="user-info">
+                    <div class="user-name" id="sidebar-username">User</div>
+                    <div class="user-role">Patient</div>
+                </div>
+                <button class="icon-btn" id="logout-icon" aria-label="Logout"
+                    onclick="document.getElementById('logout').click()">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                </button>
             </div>
-        </div>
+        </aside>
 
+        <!-- ═══════════ MAIN ═══════════ -->
+        <main class="main-content">
 
-        <div class="dashboard-card mood-card">
-            <h2>🎭 Today's Mood</h2>
-            <form id="mood-form">
-                <select id="mood-select" required>
-                    <option value="">Select your mood...</option>
-                    <option value="angry">😡 Angry</option>
-                    <option value="sad">😢 Sad</option>
-                    <option value="anxious">😰 Anxious</option>
-                    <option value="tired">😴 Tired</option>
-                    <option value="calm">😌 Calm</option>
-                    <option value="content">😊 Content</option>
-                    <option value="happy">😀 Happy</option>
-                    <option value="peaceful">😇 Peaceful</option>
-                    <option value="excited">🤩 Excited</option>
-                    <option value="energetic">⚡ Energetic</option>
-                </select>
-                <button id="submit-mood" type="submit">Save Mood</button>
-            </form>
-        </div>
+            <header class="page-header">
+                <div class="header-greeting">
+                    <h1><span id="greeting-text">Hello</span>, <span id="username">User</span> 👋</h1>
+                    <p class="user-greeting">Track your moods and journal daily</p>
+                </div>
+                <div class="header-actions">
+                    <input type="search" id="appt-search" class="search-input" placeholder="Search appointments..." />
+                    <div class="bell-wrap">
+                        <button id="notif-bell" class="bell-btn" aria-label="Notifications" onclick="toggleNotifications()">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                            <span id="notif-badge" class="notif-badge" style="display:none">0</span>
+                        </button>
+                        <div id="notif-dropdown" class="notif-dropdown" style="display:none"></div>
+                    </div>
+                    <div class="user-avatar" id="header-avatar">U</div>
+                </div>
+            </header>
 
-
-        <div class="dashboard-card journal-card">
-            <h2>📖 Daily Journal</h2>
-            <form id="journal-form">
-                <input type="date" id="journal-date-picker" required />
-                <textarea id="journal-text" placeholder="Write your thoughts..." rows="5"></textarea>
-                <button id="save-journal" type="submit">Save Journal</button>
-            </form>
-        </div>
-
-        <div class="dashboard-card">
-            <h2>📊 Your Mood Over Time</h2>
-            <div class="chart-navigation">
-                <button id="prev-week" title="Previous Week">❮</button>
-                <canvas id="mood-chart"></canvas>
-                <button id="next-week" title="Next Week">❯</button>
-
-            </div>
-        </div>
-
-        <div class="dashboard-card" id="therapist-booking-card">
-            <h2>🩺 Talk to a Therapist</h2>
-            <p>Book a private session with a licensed mental health professional.</p>
-            <button id="open-booking-btn" class="mc-primary-btn" onclick="openBookingModal()">Book Session</button>
-        </div>
-
-        <div class="dashboard-card" id="ai-suggestions-card">
-            <h2>🤖 AI Suggestions</h2>
-            <div id="ai-suggestions">Loading...</div>
-        </div>
-
-
-
-        <div class="dashboard-card habit-card">
-            <h2>✅ Daily Habits</h2>
-            <div class="habit-tracker">
-                <div class="habit-streak">
-                    <span>🔥 Current Streak: <strong id="current-streak">0</strong> days</span>
+            <!-- ───────── VIEW: DASHBOARD ───────── -->
+            <section id="view-dashboard" class="view">
+                <div class="stats-row">
+                    <div class="stat-tile" style="--glow: #3b82f6">
+                        <div class="stat-icon" style="background: var(--gradient-blue)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="stat-upcoming">0</div>
+                            <div class="stat-label">Upcoming Sessions</div>
+                        </div>
+                    </div>
+                    <div class="stat-tile" style="--glow: #06b6d4">
+                        <div class="stat-icon" style="background: var(--gradient-teal)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></svg>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="stat-mood">—</div>
+                            <div class="stat-label">Mood Score</div>
+                        </div>
+                    </div>
+                    <div class="stat-tile" style="--glow: #8b5cf6">
+                        <div class="stat-icon" style="background: var(--gradient-purple)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="stat-completed">0</div>
+                            <div class="stat-label">Sessions Completed</div>
+                        </div>
+                    </div>
+                    <div class="stat-tile" style="--glow: #10b981">
+                        <div class="stat-icon" style="background: var(--gradient-green)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c1 3 4 5 4 9a4 4 0 0 1-8 0c0-1.5.5-2.5 1.5-3.5C9.5 9 11 6 12 2z"/><path d="M6 14a6 6 0 0 0 12 0"/></svg>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="stat-streak">0</div>
+                            <div class="stat-label">Day Streak</div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="habits-list">
-                    <div class="habit-item" data-habit="hydration">
-                        <div class="habit-info">
-                            <span class="habit-icon">💧</span>
-                            <span class="habit-name">Hydration (8 glasses)</span>
+                <div class="content-grid">
+                    <div class="content-col">
+                        <div class="glass-card">
+                            <div class="card-header">
+                                <h2 class="card-title">Upcoming Appointments</h2>
+                                <a class="card-action" data-view-link="sessions">View All</a>
+                            </div>
+                            <div id="appt-list"><div class="empty-note">Loading...</div></div>
                         </div>
-                        <div class="habit-controls">
-                            <div class="water-tracker">
-                                <span class="glasses-count">0/8</span>
-                                <button class="add-glass">+</button>
-                                <button class="remove-glass">-</button>
+
+                        <div class="glass-card">
+                            <div class="card-header">
+                                <h2 class="card-title">Peer Support</h2>
+                                <button class="btn-ghost btn-small" data-view-link="peer">Open Chat</button>
+                            </div>
+                            <div id="peer-preview"><div class="empty-note">No messages yet today.</div></div>
+                            <a class="card-action card-link-bottom" data-view-link="peer">Join the conversation →</a>
+                        </div>
+                    </div>
+
+                    <div class="content-col">
+                        <div class="glass-card">
+                            <div class="card-header">
+                                <h2 class="card-title">Mood Analytics</h2>
+                                <select id="mood-range" class="mini-select">
+                                    <option value="7">This Week</option>
+                                    <option value="30">This Month</option>
+                                </select>
+                            </div>
+                            <div class="mood-ring-wrap">
+                                <svg id="mood-ring" viewBox="0 0 180 180" width="180" height="180">
+                                    <circle cx="90" cy="90" r="70" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="16" />
+                                    <g id="mood-ring-segments" transform="rotate(-90 90 90)"></g>
+                                </svg>
+                                <div class="mood-ring-center">
+                                    <div class="mood-ring-value" id="mood-score">—</div>
+                                    <div class="mood-ring-label">Mood Score</div>
+                                </div>
+                            </div>
+                            <div id="mood-legend" class="legend"></div>
+                        </div>
+
+                        <div class="glass-card">
+                            <div class="card-header"><h2 class="card-title">Health Vitals</h2></div>
+                            <div class="vitals-grid">
+                                <div class="vital-tile">
+                                    <div class="vital-top"><span>💤 Sleep</span><strong id="vital-sleep">0h</strong></div>
+                                    <div class="progress-bar"><div class="progress-fill" id="vital-sleep-bar" style="background:#3b82f6"></div></div>
+                                </div>
+                                <div class="vital-tile">
+                                    <div class="vital-top"><span>🏃 Activity</span><strong id="vital-activity">0%</strong></div>
+                                    <div class="progress-bar"><div class="progress-fill" id="vital-activity-bar" style="background:#06b6d4"></div></div>
+                                </div>
+                                <div class="vital-tile">
+                                    <div class="vital-top"><span>🧘 Meditation</span><strong id="vital-meditation">0min</strong></div>
+                                    <div class="progress-bar"><div class="progress-fill" id="vital-meditation-bar" style="background:#8b5cf6"></div></div>
+                                </div>
+                                <div class="vital-tile">
+                                    <div class="vital-top"><span>💧 Hydration</span><strong id="vital-hydration">0/8</strong></div>
+                                    <div class="progress-bar"><div class="progress-fill" id="vital-hydration-bar" style="background:#10b981"></div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ───────── VIEW: MY SESSIONS ───────── -->
+            <section id="view-sessions" class="view" style="display:none;">
+                <div class="glass-card" id="therapist-booking-card">
+                    <div class="card-header">
+                        <h2 class="card-title">🩺 Talk to a Therapist</h2>
+                    </div>
+                    <p class="muted">Book a private session with a licensed mental health professional.</p>
+                    <button id="open-booking-btn" class="btn-primary" style="margin-top:14px"
+                        onclick="openBookingModal()">Book Session</button>
+                </div>
+                <div class="glass-card" style="margin-top:20px">
+                    <div class="card-header"><h2 class="card-title">All My Sessions</h2></div>
+                    <div id="sessions-list"><div class="empty-note">Loading...</div></div>
+                </div>
+            </section>
+
+            <!-- ───────── VIEW: PEER SUPPORT ───────── -->
+            <section id="view-peer" class="view" style="display:none;">
+                <div class="glass-card" id="chat-card">
+                    <div class="card-header"><h2 class="card-title">💬 Peer Support Chat</h2></div>
+
+                    <!-- Chat Room Selector -->
+                    <select id="chat-room-selector" class="chat-room-selector">
+                        <option value="general">General</option>
+                        <option value="anxiety-support">Anxiety Support</option>
+                        <option value="motivation-room">Motivation Room</option>
+                    </select>
+
+                    <!-- Chat Window -->
+                    <div id="chat-window" class="chat-window"></div>
+
+                    <!-- Chat Input -->
+                    <div class="chat-input-section">
+                        <input type="text" id="chat-input" class="chat-input" placeholder="Type your message..." />
+                        <button id="send-chat" class="chat-send-button">Send</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ───────── VIEW: WELLNESS TRACKER ───────── -->
+            <section id="view-wellness" class="view" style="display:none;">
+                <div class="wellness-grid">
+                    <div class="glass-card mood-card">
+                        <div class="card-header"><h2 class="card-title">🎭 Today's Mood</h2></div>
+                        <form id="mood-form">
+                            <select id="mood-select" required>
+                                <option value="">Select your mood...</option>
+                                <option value="angry">😡 Angry</option>
+                                <option value="sad">😢 Sad</option>
+                                <option value="anxious">😰 Anxious</option>
+                                <option value="tired">😴 Tired</option>
+                                <option value="calm">😌 Calm</option>
+                                <option value="content">😊 Content</option>
+                                <option value="happy">😀 Happy</option>
+                                <option value="peaceful">😇 Peaceful</option>
+                                <option value="excited">🤩 Excited</option>
+                                <option value="energetic">⚡ Energetic</option>
+                            </select>
+                            <button id="submit-mood" type="submit">Save Mood</button>
+                        </form>
+                    </div>
+
+                    <div class="glass-card journal-card">
+                        <div class="card-header"><h2 class="card-title">📖 Daily Journal</h2></div>
+                        <form id="journal-form">
+                            <input type="date" id="journal-date-picker" required />
+                            <textarea id="journal-text" placeholder="Write your thoughts..." rows="5"></textarea>
+                            <button id="save-journal" type="submit">Save Journal</button>
+                        </form>
+                    </div>
+
+                    <div class="glass-card">
+                        <div class="card-header"><h2 class="card-title">📊 Your Mood Over Time</h2></div>
+                        <div class="chart-navigation">
+                            <button id="prev-week" title="Previous Week">❮</button>
+                            <canvas id="mood-chart"></canvas>
+                            <button id="next-week" title="Next Week">❯</button>
+                        </div>
+                    </div>
+
+                    <div class="glass-card" id="ai-suggestions-card">
+                        <div class="card-header"><h2 class="card-title">🤖 AI Suggestions</h2></div>
+                        <div id="ai-suggestions">Loading...</div>
+                    </div>
+
+                    <div class="glass-card habit-card">
+                        <div class="card-header"><h2 class="card-title">✅ Daily Habits</h2></div>
+                        <div class="habit-tracker">
+                            <div class="habit-streak">
+                                <span>🔥 Current Streak: <strong id="current-streak">0</strong> days</span>
+                            </div>
+
+                            <div class="habits-list">
+                                <div class="habit-item" data-habit="hydration">
+                                    <div class="habit-info">
+                                        <span class="habit-icon">💧</span>
+                                        <span class="habit-name">Hydration (8 glasses)</span>
+                                    </div>
+                                    <div class="habit-controls">
+                                        <div class="water-tracker">
+                                            <span class="glasses-count">0/8</span>
+                                            <button class="add-glass">+</button>
+                                            <button class="remove-glass">-</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="habit-item" data-habit="sleep">
+                                    <div class="habit-info">
+                                        <span class="habit-icon">😴</span>
+                                        <span class="habit-name">Sleep (7+ hours)</span>
+                                    </div>
+                                    <div class="habit-controls">
+                                        <input type="number" class="sleep-hours" min="0" max="24" step="0.5" placeholder="Hours">
+                                        <button class="toggle-habit" data-target="7">✓</button>
+                                    </div>
+                                </div>
+
+                                <div class="habit-item" data-habit="exercise">
+                                    <div class="habit-info">
+                                        <span class="habit-icon">💪</span>
+                                        <span class="habit-name">Exercise (30 min)</span>
+                                    </div>
+                                    <div class="habit-controls">
+                                        <input type="number" class="exercise-minutes" min="0" max="480" placeholder="Minutes">
+                                        <button class="toggle-habit" data-target="30">✓</button>
+                                    </div>
+                                </div>
+
+                                <div class="habit-item" data-habit="meditation">
+                                    <div class="habit-info">
+                                        <span class="habit-icon">🧘</span>
+                                        <span class="habit-name">Meditation</span>
+                                    </div>
+                                    <div class="habit-controls">
+                                        <button class="meditation-btn" data-duration="5">5min</button>
+                                        <button class="meditation-btn" data-duration="10">10min</button>
+                                        <button class="meditation-btn" data-duration="15">15min</button>
+                                        <button class="toggle-habit completed">✓</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="habits-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="daily-progress"></div>
+                                </div>
+                                <span class="progress-text">Today's Progress: <span id="progress-percentage">0%</span></span>
                             </div>
                         </div>
                     </div>
 
-                    <div class="habit-item" data-habit="sleep">
-                        <div class="habit-info">
-                            <span class="habit-icon">😴</span>
-                            <span class="habit-name">Sleep (7+ hours)</span>
-                        </div>
-                        <div class="habit-controls">
-                            <input type="number" class="sleep-hours" min="0" max="24" step="0.5" placeholder="Hours">
-                            <button class="toggle-habit" data-target="7">✓</button>
-                        </div>
-                    </div>
-
-                    <div class="habit-item" data-habit="exercise">
-                        <div class="habit-info">
-                            <span class="habit-icon">💪</span>
-                            <span class="habit-name">Exercise (30 min)</span>
-                        </div>
-                        <div class="habit-controls">
-                            <input type="number" class="exercise-minutes" min="0" max="480" placeholder="Minutes">
-                            <button class="toggle-habit" data-target="30">✓</button>
-                        </div>
-                    </div>
-
-                    <div class="habit-item" data-habit="meditation">
-                        <div class="habit-info">
-                            <span class="habit-icon">🧘</span>
-                            <span class="habit-name">Meditation</span>
-                        </div>
-                        <div class="habit-controls">
-                            <button class="meditation-btn" data-duration="5">5min</button>
-                            <button class="meditation-btn" data-duration="10">10min</button>
-                            <button class="meditation-btn" data-duration="15">15min</button>
-                            <button class="toggle-habit completed">✓</button>
+                    <div class="glass-card">
+                        <div class="card-header"><h2 class="card-title">📚 Recent Journal Entries</h2></div>
+                        <div id="journal-view">
+                            <div class="loading"></div>
                         </div>
                     </div>
                 </div>
+            </section>
 
-                <div class="habits-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="daily-progress"></div>
-                    </div>
-                    <span class="progress-text">Today's Progress: <span id="progress-percentage">0%</span></span>
-                </div>
-            </div>
-        </div>
+        </main>
+    </div>
 
-        <div class="dashboard-card">
-            <h2>📚 Recent Journal Entries</h2>
-            <div id="journal-view">
-                <div class="loading"></div>
-            </div>
-        </div>
-    </main>
-
+    <!-- ═══════════ MODALS ═══════════ -->
     <div id="meditation-modal" class="meditation-modal">
         <div class="meditation-content">
             <button class="close-meditation">&times;</button>
@@ -256,7 +431,7 @@
 
                 <div class="meditation-progress-ring">
                     <svg class="progress-ring" width="120" height="120">
-                        <circle class="progress-ring-circle" stroke="#00d4ff" stroke-width="4" fill="transparent" r="54"
+                        <circle class="progress-ring-circle" stroke="#06b6d4" stroke-width="4" fill="transparent" r="54"
                             cx="60" cy="60" />
                     </svg>
                 </div>
@@ -269,7 +444,6 @@
                 <button id="meditation-done" class="meditation-control-btn">Done</button>
             </div>
         </div>
-
     </div>
 
     <!-- Missed Streak Modal -->
@@ -284,48 +458,66 @@
 
     <div id="centered-notification-container"></div>
 
-    <!-- Therapist booking modal -->
+    <script>
+        const firebaseApiKey = "{{ api_key }}";
+    </script>
+
+    <!-- Therapist booking modal: step 0 = date, 1 = therapist, 2 = time slot -->
     <div id="booking-modal" class="mc-modal-backdrop" style="display:none;">
         <div class="mc-modal">
             <button class="mc-modal-close" onclick="closeBookingModal()" aria-label="Close">&times;</button>
             <h2>Book a Session</h2>
-            <div id="booking-step-date">
-                <p class="mc-hint">Pick a date for your session.</p>
-                <div class="cal-header">
-                    <button type="button" id="cal-prev" class="cal-nav" aria-label="Previous month">&lsaquo;</button>
-                    <span id="cal-title"></span>
-                    <button type="button" id="cal-next" class="cal-nav" aria-label="Next month">&rsaquo;</button>
-                </div>
-                <div class="cal-weekdays">
-                    <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
-                </div>
-                <div id="cal-grid" class="cal-grid"></div>
-                <div class="mc-btn-row">
-                    <button type="button" id="booking-date-next" class="mc-primary-btn" style="display:none;"
-                        onclick="goToBookingStep()">Next &rarr;</button>
+            <div class="step-dots" id="booking-step-dots">
+                <span class="step-dot active"></span><span class="step-dot"></span><span class="step-dot"></span>
+            </div>
+
+            <div id="step-0">
+                <div id="booking-step-date">
+                    <p class="mc-hint">Pick a date for your session.</p>
+                    <div class="cal-header">
+                        <button type="button" id="cal-prev" class="cal-nav" aria-label="Previous month">&lsaquo;</button>
+                        <span id="cal-title"></span>
+                        <button type="button" id="cal-next" class="cal-nav" aria-label="Next month">&rsaquo;</button>
+                    </div>
+                    <div class="cal-weekdays">
+                        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                    </div>
+                    <div id="cal-grid" class="cal-grid"></div>
+                    <div class="mc-btn-row">
+                        <button type="button" id="booking-date-next" class="mc-primary-btn" style="display:none;"
+                            onclick="goToBookingStep()">Next &rarr;</button>
+                    </div>
                 </div>
             </div>
-            <div id="booking-step-therapists" style="display:none;">
-                <p class="mc-hint">Choose who you'd like to talk to.</p>
-                <div id="booking-therapist-list" class="mc-therapist-list"></div>
-                <div class="mc-btn-row">
-                    <button type="button" class="mc-secondary-btn" onclick="backToDate()">Back</button>
+
+            <div id="step-1">
+                <div id="booking-step-therapists" style="display:none;">
+                    <p class="mc-hint">Choose who you'd like to talk to.</p>
+                    <div id="booking-therapist-list" class="mc-therapist-list"></div>
+                    <div class="mc-btn-row">
+                        <button type="button" class="mc-secondary-btn" onclick="backToDate()">Back</button>
+                    </div>
                 </div>
             </div>
-            <form id="booking-form" onsubmit="submitBooking(event)" style="display:none;">
-                <div class="mc-selected-therapist">With: <strong id="booking-therapist-name"></strong></div>
-                <div class="mc-selected-therapist">Date: <strong id="booking-date-label"></strong></div>
-                <label for="booking-timeslot">Select a time slot</label>
-                <select id="booking-timeslot" required>
-                    <option value="">Select a time slot</option>
-                </select>
-                <label for="booking-notes">What would you like to discuss?</label>
-                <textarea id="booking-notes" rows="4"></textarea>
-                <div class="mc-btn-row">
-                    <button type="button" class="mc-secondary-btn" onclick="backToTherapists()">Back</button>
-                    <button type="submit" id="booking-submit" class="mc-primary-btn">Confirm Booking</button>
-                </div>
-            </form>
+
+            <div id="step-2">
+                <form id="booking-form" onsubmit="submitBooking(event)" style="display:none;">
+                    <div class="mc-selected-therapist">With: <strong id="booking-therapist-name"></strong></div>
+                    <div class="mc-selected-therapist">Date: <strong id="booking-date-label"></strong></div>
+                    <label>Select a time slot</label>
+                    <div id="booking-slots" class="slots-grid"></div>
+                    <select id="booking-timeslot" aria-hidden="true" tabindex="-1">
+                        <option value="">Select a time slot</option>
+                    </select>
+                    <label for="booking-notes">What would you like to discuss?</label>
+                    <textarea id="booking-notes" rows="4"></textarea>
+                    <div class="mc-btn-row">
+                        <button type="button" class="mc-secondary-btn" onclick="backToTherapists()">Back</button>
+                        <button type="submit" id="booking-submit" class="mc-primary-btn">Confirm Booking</button>
+                    </div>
+                </form>
+            </div>
+
             <div id="booking-success" class="mc-success" style="display:none;">
                 Session booked! Your therapist will confirm shortly.
             </div>
@@ -333,29 +525,51 @@
     </div>
 
     <!-- Patient AI chatbot widget -->
-    <button id="chatbot-toggle" class="chatbot-toggle" onclick="toggleChatbot()" aria-label="Open chat">💬</button>
+    <button id="chatbot-toggle" class="chatbot-toggle" onclick="toggleChatbot()" aria-label="Open chat">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </button>
     <div id="chatbot-window" class="chatbot-window" style="display:none;">
         <div class="chatbot-header">
-            <span>MindCare Assistant</span>
-            <button class="chatbot-close" onclick="toggleChatbot()" aria-label="Close chat">&times;</button>
+            <div class="chatbot-header-icon">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4M9 14h.01M15 14h.01"/></svg>
+                <span class="status-dot-live"></span>
+            </div>
+            <div class="chatbot-header-text">
+                <div class="chatbot-title">MindCare AI</div>
+                <div class="chatbot-status">Online · LangGraph Agent</div>
+            </div>
+            <button class="chatbot-ctl" onclick="minimizeChatbot()" aria-label="Minimize">&minus;</button>
+            <button class="chatbot-ctl" onclick="toggleChatbot()" aria-label="Close chat">&times;</button>
         </div>
-        <div id="chatbot-messages" class="chatbot-messages"></div>
-        <div id="chatbot-banner" class="chatbot-banner" style="display:none;">
-            Our care team has been notified and will reach out to you.
-        </div>
-        <div class="chatbot-input-row">
-            <input type="text" id="chatbot-input" placeholder="Type a message..."
-                onkeydown="if(event.key==='Enter')sendChatMessage()" />
-            <button id="chatbot-send" onclick="sendChatMessage()">Send</button>
+        <div class="chatbot-body">
+            <div class="mood-strip" id="chatbot-mood-strip">
+                <span class="mood-strip-label">Mood:</span>
+                <button type="button" class="mood-pill active" data-mood="good">😊 Good</button>
+                <button type="button" class="mood-pill" data-mood="low">😔 Low</button>
+                <button type="button" class="mood-pill" data-mood="anxious">😰 Anxious</button>
+                <button type="button" class="mood-pill" data-mood="stressed">😤 Stressed</button>
+            </div>
+            <div id="chatbot-messages" class="chatbot-messages"></div>
+            <div id="chatbot-banner" class="chatbot-banner" style="display:none;">
+                Our care team has been notified and will reach out to you.
+            </div>
+            <div class="chatbot-chips">
+                <button type="button" class="chip" onclick="chatbotQuick('breathing')">🧘 Start breathing exercise</button>
+                <button type="button" class="chip" onclick="chatbotQuick('book')">📅 Book session</button>
+                <button type="button" class="chip" onclick="chatbotQuick('mood')">📓 Log my mood</button>
+            </div>
+            <div class="chatbot-input-row">
+                <input type="text" id="chatbot-input" placeholder="Type a message..."
+                    onkeydown="if(event.key==='Enter')sendChatMessage()" />
+                <button id="chatbot-send" onclick="sendChatMessage()" aria-label="Send">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>
+                </button>
+            </div>
+            <div class="chatbot-footer">LangGraph Agent · Hybrid Pipeline · Your data is private</div>
         </div>
     </div>
 
-    <script>
-        const firebaseApiKey = "{{ api_key }}";
-    </script>
-
     <script type="module" src="/static/dashboard.js"></script>
-
 
 </body>
 

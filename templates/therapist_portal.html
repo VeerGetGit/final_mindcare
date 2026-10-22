@@ -4,50 +4,165 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Therapist Portal - MindCare</title>
-  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"/>
   <link rel="stylesheet" href="/static/therapist_portal.css"/>
 </head>
 <body>
 
-  <header class="tp-header">
-    <div class="tp-header-left">
-      <button id="tp-home-btn" class="tp-btn tp-btn-outline tp-home-btn">🏠 Home</button>
-      <span class="tp-logo">🧠 MindCare</span>
-      <span class="tp-badge">Therapist Portal</span>
-    </div>
-    <div class="tp-header-center">
-      Welcome, Dr. <span id="tp-therapist-name">...</span>
-    </div>
-    <div class="tp-header-right">
-      <button id="tp-cases-btn" class="tp-btn tp-btn-outline">📋 My Cases</button>
-      <button id="tp-logout-btn" class="tp-btn tp-btn-outline">Logout</button>
-    </div>
-  </header>
+  <div class="tp-shell">
 
-  <div class="tp-layout">
+    <!-- ═══════════ NAV SIDEBAR ═══════════ -->
+    <aside class="tp-nav">
+      <div class="tp-nav-logo">
+        <div class="tp-logo-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        </div>
+        <span class="tp-logo">MindCare</span>
+      </div>
 
-    <!-- SIDEBAR -->
-    <aside class="tp-sidebar">
-      <div class="tp-sidebar-header">
-        <h3>My Patients</h3>
-        <button class="tp-btn tp-btn-primary" id="add-patient-btn" style="font-size:12px;padding:6px 14px;">+ Add</button>
+      <nav class="tp-nav-links">
+        <button id="tp-home-btn" class="tp-nav-link active" data-portal-view="home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+          Home
+        </button>
+        <button id="tp-cases-btn" class="tp-nav-link" data-portal-view="cases">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          My Cases
+        </button>
+        <button id="tp-profile-btn" class="tp-nav-link" data-portal-view="profile">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Profile
+        </button>
+        <button id="tp-settings-btn" class="tp-nav-link" data-portal-view="settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Settings
+        </button>
+      </nav>
+
+      <div class="tp-nav-user">
+        <div class="tp-avatar" id="tp-sidebar-avatar">T</div>
+        <div class="tp-nav-user-info">
+          <div class="tp-nav-user-name" id="tp-sidebar-name">Therapist</div>
+          <span class="tp-role-badge">Therapist</span>
+        </div>
+        <button id="tp-logout-btn" class="tp-icon-btn" aria-label="Logout" title="Logout">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        </button>
       </div>
-      <div class="tp-search-box">
-        <input type="text" id="patient-search" placeholder="Search patients..."/>
-      </div>
-      <ul id="patient-list" class="tp-patient-list">
-        <li class="tp-loading">Loading...</li>
-      </ul>
     </aside>
 
-    <!-- MAIN -->
-    <main class="tp-main">
+    <!-- ═══════════ CONTENT ═══════════ -->
+    <div class="tp-content">
 
-      <!-- MY CASES -->
-      <section id="tp-cases-view" style="display:none;">
+      <header class="tp-header">
+        <h1>Therapist Portal</h1>
+        <div class="tp-header-right">
+          <span class="tp-header-welcome">Welcome, Dr. <span id="tp-therapist-name">...</span></span>
+          <span class="tp-role-badge">Therapist</span>
+        </div>
+      </header>
+
+      <!-- ───────── HOME: patients + AI session assistant ───────── -->
+      <div id="tp-view-home" class="tp-view">
+        <div class="tp-layout">
+
+          <aside class="tp-sidebar">
+            <div class="tp-sidebar-header">
+              <h3>My Patients</h3>
+              <button class="tp-btn tp-btn-primary" id="add-patient-btn" style="font-size:12px;padding:6px 14px;">+ Add</button>
+            </div>
+            <div class="tp-search-box">
+              <input type="text" id="patient-search" placeholder="Search patients..."/>
+            </div>
+            <ul id="patient-list" class="tp-patient-list">
+              <li class="tp-loading">Loading...</li>
+            </ul>
+          </aside>
+
+          <main class="tp-main">
+
+            <div id="tp-empty-state" class="tp-empty-state">
+              <div class="tp-empty-icon">🩺</div>
+              <h2>Select a patient to begin</h2>
+              <p>Choose from the list or click + Add to create one.</p>
+            </div>
+
+            <div id="tp-chat-view" style="display:none;">
+
+              <div class="tp-patient-bar">
+                <div>
+                  <h2 id="view-patient-name">—</h2>
+                  <span id="view-patient-meta" class="tp-meta">—</span>
+                </div>
+                <div id="risk-banner" class="tp-risk-pill" style="display:none;"></div>
+              </div>
+
+              <div class="tp-tabs">
+                <button class="tp-tab active" data-tab="chat">🤖 AI Agent</button>
+                <button class="tp-tab" data-tab="history">📋 Session History</button>
+                <button class="tp-tab" data-tab="overview">📊 Overview</button>
+              </div>
+
+              <!-- AI Chat Tab -->
+              <div id="tab-chat" class="tp-tab-content active">
+                <div class="tp-chat-hint">
+                  <strong>💡 You can say things like:</strong>
+                  <span>"Log today's session — she was anxious for 45 mins, triggers: work stress, risk medium, next appt in 2 weeks"</span>
+                  <span>"Show all sessions"</span>
+                  <span>"Delete the last session"</span>
+                  <span>"Update risk to high"</span>
+                  <span>"Search sessions about anxiety"</span>
+                </div>
+                <div id="chat-messages" class="tp-chat-messages"></div>
+                <div class="tp-chat-input-row">
+                  <textarea id="chat-input" rows="2" placeholder="Type your instruction or session notes..."></textarea>
+                  <button id="chat-send-btn" class="tp-btn tp-btn-primary">
+                    <span id="send-btn-text">Send ➤</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Session History Tab -->
+              <div id="tab-history" class="tp-tab-content" style="display:none;">
+                <div id="session-list" class="tp-session-list">
+                  <div class="tp-loading">Loading sessions...</div>
+                </div>
+              </div>
+
+              <!-- Overview Tab -->
+              <div id="tab-overview" class="tp-tab-content" style="display:none;">
+                <div class="tp-overview-grid">
+                  <div class="tp-overview-card"><span class="tp-ov-label">Total Sessions</span><span class="tp-ov-value" id="ov-total">—</span></div>
+                  <div class="tp-overview-card"><span class="tp-ov-label">Last Session</span><span class="tp-ov-value" id="ov-last">—</span></div>
+                  <div class="tp-overview-card"><span class="tp-ov-label">Current Risk</span><span class="tp-ov-value" id="ov-risk">—</span></div>
+                  <div class="tp-overview-card"><span class="tp-ov-label">Next Appointment</span><span class="tp-ov-value" id="ov-next">—</span></div>
+                  <div class="tp-overview-card"><span class="tp-ov-label">Most Common Mood</span><span class="tp-ov-value" id="ov-mood">—</span></div>
+                  <div class="tp-overview-card"><span class="tp-ov-label">Avg Problem Freq</span><span class="tp-ov-value" id="ov-freq">—</span></div>
+                </div>
+                <div class="tp-overview-section">
+                  <h4>Recurring Trigger Points</h4>
+                  <div id="ov-triggers" class="tp-tag-cloud">—</div>
+                </div>
+              </div>
+
+            </div>
+          </main>
+        </div>
+      </div>
+
+      <!-- ───────── MY CASES ───────── -->
+      <section id="tp-cases-view" class="tp-view" style="display:none;">
         <!-- Only one of these two panels is visible at a time -->
         <div id="booking-list-panel">
-          <h2>📋 My Cases</h2>
+          <div class="tp-panel-header">
+            <h2>My Patient Bookings</h2>
+            <div class="tp-filter-pills" id="booking-filters">
+              <button class="tp-pill active" data-filter="all">All</button>
+              <button class="tp-pill" data-filter="pending">Pending</button>
+              <button class="tp-pill" data-filter="accepted">Accepted</button>
+              <button class="tp-pill" data-filter="rejected">Rejected</button>
+            </div>
+          </div>
           <div class="tp-tabs">
             <button class="tp-tab active" id="cases-tab-bookings">📋 Session Bookings</button>
           </div>
@@ -59,72 +174,29 @@
         </div>
       </section>
 
-      <div id="tp-empty-state" class="tp-empty-state">
-        <div class="tp-empty-icon">🩺</div>
-        <h2>Select a patient to begin</h2>
-        <p>Choose from the list or click + Add to create one.</p>
-      </div>
-
-      <div id="tp-chat-view" style="display:none;">
-
-        <div class="tp-patient-bar">
+      <!-- ───────── PROFILE ───────── -->
+      <section id="tp-view-profile" class="tp-view" style="display:none;">
+        <div class="tp-panel-header"><h2>Profile</h2></div>
+        <div class="tp-case-card tp-profile-card">
+          <div class="tp-avatar tp-avatar-lg" id="tp-profile-avatar">T</div>
           <div>
-            <h2 id="view-patient-name">—</h2>
-            <span id="view-patient-meta" class="tp-meta">—</span>
-          </div>
-          <div id="risk-banner" class="tp-risk-pill" style="display:none;"></div>
-        </div>
-
-        <div class="tp-tabs">
-          <button class="tp-tab active" data-tab="chat">🤖 AI Agent</button>
-          <button class="tp-tab" data-tab="history">📋 Session History</button>
-          <button class="tp-tab" data-tab="overview">📊 Overview</button>
-        </div>
-
-        <!-- AI Chat Tab -->
-        <div id="tab-chat" class="tp-tab-content active">
-          <div class="tp-chat-hint">
-            <strong>💡 You can say things like:</strong>
-            <span>"Log today's session — she was anxious for 45 mins, triggers: work stress, risk medium, next appt in 2 weeks"</span>
-            <span>"Show all sessions"</span>
-            <span>"Delete the last session"</span>
-            <span>"Update risk to high"</span>
-            <span>"Search sessions about anxiety"</span>
-          </div>
-          <div id="chat-messages" class="tp-chat-messages"></div>
-          <div class="tp-chat-input-row">
-            <textarea id="chat-input" rows="2" placeholder="Type your instruction or session notes..."></textarea>
-            <button id="chat-send-btn" class="tp-btn tp-btn-primary">
-              <span id="send-btn-text">Send ➤</span>
-            </button>
+            <h3 id="tp-profile-name">—</h3>
+            <div class="tp-case-row"><strong>Email: </strong><span id="tp-profile-email">—</span></div>
+            <div class="tp-case-row"><strong>Specialization: </strong><span id="tp-profile-spec">—</span></div>
+            <div class="tp-case-row"><strong>Status: </strong><span id="tp-profile-status">—</span></div>
           </div>
         </div>
+      </section>
 
-        <!-- Session History Tab -->
-        <div id="tab-history" class="tp-tab-content" style="display:none;">
-          <div id="session-list" class="tp-session-list">
-            <div class="tp-loading">Loading sessions...</div>
-          </div>
+      <!-- ───────── SETTINGS ───────── -->
+      <section id="tp-view-settings" class="tp-view" style="display:none;">
+        <div class="tp-panel-header"><h2>Settings</h2></div>
+        <div class="tp-case-card">
+          <p class="tp-meta">There are no portal settings yet. Notification and availability preferences will appear here.</p>
         </div>
+      </section>
 
-        <!-- Overview Tab -->
-        <div id="tab-overview" class="tp-tab-content" style="display:none;">
-          <div class="tp-overview-grid">
-            <div class="tp-overview-card"><span class="tp-ov-label">Total Sessions</span><span class="tp-ov-value" id="ov-total">—</span></div>
-            <div class="tp-overview-card"><span class="tp-ov-label">Last Session</span><span class="tp-ov-value" id="ov-last">—</span></div>
-            <div class="tp-overview-card"><span class="tp-ov-label">Current Risk</span><span class="tp-ov-value" id="ov-risk">—</span></div>
-            <div class="tp-overview-card"><span class="tp-ov-label">Next Appointment</span><span class="tp-ov-value" id="ov-next">—</span></div>
-            <div class="tp-overview-card"><span class="tp-ov-label">Most Common Mood</span><span class="tp-ov-value" id="ov-mood">—</span></div>
-            <div class="tp-overview-card"><span class="tp-ov-label">Avg Problem Freq</span><span class="tp-ov-value" id="ov-freq">—</span></div>
-          </div>
-          <div class="tp-overview-section">
-            <h4>Recurring Trigger Points</h4>
-            <div id="ov-triggers" class="tp-tag-cloud">—</div>
-          </div>
-        </div>
-
-      </div>
-    </main>
+    </div>
   </div>
 
   <!-- ADD PATIENT MODAL -->

@@ -36,6 +36,7 @@ onAuthStateChanged(auth, async (user) => {
   currentTherapistId = user.uid;
   currentTherapistName = snap.data().name || "Therapist";
   document.getElementById("tp-therapist-name").textContent = currentTherapistName;
+  fillTherapistIdentity(snap.data(), user);
   await loadPatients();
   addAgentMessage("👋 Hello! I'm your AI session assistant. Click **+ Add** to add a patient, then tell me what you'd like to do.");
 });
@@ -365,11 +366,11 @@ function renderOverview(sessions) {
 }
 
 // ── TABS ──────────────────────────────────────────────────────────────────────
-document.querySelectorAll(".tp-tab").forEach(tab => {
+document.querySelectorAll(".tp-tab[data-tab]").forEach(tab => {
   tab.addEventListener("click", () => switchTab(tab.dataset.tab));
 });
 function switchTab(name) {
-  document.querySelectorAll(".tp-tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
+  document.querySelectorAll(".tp-tab[data-tab]").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
   document.querySelectorAll(".tp-tab-content").forEach(c => { c.style.display = "none"; c.classList.remove("active"); });
   const t = document.getElementById("tab-" + name);
   if (t) { t.style.display = "block"; t.classList.add("active"); }
@@ -422,23 +423,35 @@ function showToast(msg, type = "") {
 }
 
 // ── MY CASES ──────────────────────────────────────────────────────────────────
-const casesView = document.getElementById("tp-cases-view");
+function fillTherapistIdentity(profile, user) {
+  const name = profile.name || "Therapist";
+  const initial = name.replace(/^dr\.?\s+/i, "").charAt(0).toUpperCase() || "T";
+  document.getElementById("tp-sidebar-name").textContent = name;
+  document.getElementById("tp-sidebar-avatar").textContent = initial;
+  document.getElementById("tp-profile-avatar").textContent = initial;
+  document.getElementById("tp-profile-name").textContent = name;
+  document.getElementById("tp-profile-email").textContent = profile.email || user.email || "—";
+  document.getElementById("tp-profile-spec").textContent = profile.specialization || "—";
+  document.getElementById("tp-profile-status").textContent = profile.status || "available";
+}
 
-document.getElementById("tp-cases-btn").addEventListener("click", () => {
-  const opening = casesView.style.display === "none";
-  casesView.style.display = opening ? "block" : "none";
-  // Hide/restore the existing patient views while the cases panel is open
-  const empty = document.getElementById("tp-empty-state");
-  const chatView = document.getElementById("tp-chat-view");
-  if (opening) {
-    empty.style.display = "none";
-    chatView.style.display = "none";
+// Portal views: home (patients + AI assistant), cases, profile, settings.
+// Only one is visible at a time. "Home" itself reloads /therapist/portal (see HOME below).
+const PORTAL_VIEW_IDS = { home: "tp-view-home", cases: "tp-cases-view", profile: "tp-view-profile", settings: "tp-view-settings" };
+
+function setPortalView(name) {
+  Object.entries(PORTAL_VIEW_IDS).forEach(([key, id]) => {
+    document.getElementById(id).style.display = key === name ? "block" : "none";
+  });
+  document.querySelectorAll(".tp-nav-link").forEach(b => b.classList.toggle("active", b.dataset.portalView === name));
+  if (name === "cases") {
     hidePatientDetail();
     loadCases();
-  } else {
-    empty.style.display = currentPatientId ? "none" : "";
-    chatView.style.display = currentPatientId ? "block" : "none";
   }
+}
+
+["cases", "profile", "settings"].forEach(name => {
+  document.querySelector(`.tp-nav-link[data-portal-view="${name}"]`).addEventListener("click", () => setPortalView(name));
 });
 
 function caseTime(c) {
@@ -563,74 +576,112 @@ async function respondToBooking(c, status, badge, actions) {
 }
 
 let currentBookings = [];
+let bookingFilter = "all";
 
-// Accept / Reject (or the result label once answered) + chat history; used by list cards and the detail panel
+function bookingStatus(c) {
+  const st = c.status || "pending";
+  return st === "confirmed" ? "accepted" : st;
+}
+
+function initials(name) {
+  return (name || "?").trim().split(/\s+/).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "?";
+}
+
+// Accept / Reject (or the result label once answered); used by list cards and the detail panel
 function buildBookingActions(c, badge) {
   const actions = document.createElement("div");
   actions.className = "tp-case-actions";
-  const status = c.status || "pending";
 
-  if (status === "pending") {
+  if (bookingStatus(c) === "pending") {
     const acceptBtn = document.createElement("button");
-    acceptBtn.className = "tp-btn tp-btn-primary";
+    acceptBtn.className = "tp-btn tp-btn-accept";
     acceptBtn.dataset.bookingAction = "accept";
     acceptBtn.textContent = "✅ Accept";
     acceptBtn.addEventListener("click", () => respondToBooking(c, "accepted", badge, actions));
     const rejectBtn = document.createElement("button");
-    rejectBtn.className = "tp-btn tp-btn-outline";
+    rejectBtn.className = "tp-btn tp-btn-reject";
     rejectBtn.dataset.bookingAction = "reject";
     rejectBtn.textContent = "❌ Reject";
     rejectBtn.addEventListener("click", () => respondToBooking(c, "rejected", badge, actions));
     actions.append(acceptBtn, rejectBtn);
-  } else if (["accepted", "confirmed", "rejected"].includes(status)) {
-    setBookingResult(actions, status, timeLine(c, "responded_at"));
+  } else {
+    setBookingResult(actions, bookingStatus(c), timeLine(c, "responded_at"));
   }
   return actions;
 }
 
+// acceptBooking(id) / rejectBooking(id): same logic as the buttons, addressed by booking id
+async function acceptBooking(id) { await respondById(id, "accepted"); }
+async function rejectBooking(id) { await respondById(id, "rejected"); }
+async function respondById(id, status) {
+  const c = currentBookings.find(b => b.id === id);
+  if (!c) return;
+  await respondToBooking(c, status, document.createElement("span"), document.createElement("div"));
+  renderBookings(document.getElementById("cases-bookings"), currentBookings);
+}
+window.acceptBooking = acceptBooking;
+window.rejectBooking = rejectBooking;
+
 function renderBookings(container, bookings) {
   currentBookings = bookings;
   container.textContent = "";
-  if (!bookings.length) {
-    container.textContent = "No session bookings yet.";
+  const shown = bookingFilter === "all" ? bookings : bookings.filter(b => bookingStatus(b) === bookingFilter);
+  if (!shown.length) {
+    container.textContent = bookings.length ? "No bookings match this filter." : "No session bookings yet.";
     return;
   }
-  bookings.forEach(c => {
+  shown.forEach(c => {
     const card = document.createElement("div");
     card.className = "tp-case-card";
 
+    const head = document.createElement("div");
+    head.className = "tp-case-head";
+    const avatar = document.createElement("div");
+    avatar.className = "tp-avatar";
+    avatar.textContent = initials(c.patient_name);
+    const title = document.createElement("div");
+    title.className = "tp-case-title";
+    const nameLink = document.createElement("button");
+    nameLink.type = "button";
+    nameLink.className = "tp-name-link";
+    nameLink.textContent = c.patient_name || "Anonymous";
+    nameLink.addEventListener("click", () => showPatientDetail(c.id));
+    const sub = document.createElement("div");
+    sub.className = "tp-case-sub";
+    sub.textContent = [c.date, c.timeslot].filter(Boolean).join(" · ") + (c.booked_via === "chatbot" ? " · 📱 Chatbot" : " · 🖥️ Dashboard");
+    title.append(nameLink, sub);
     const badge = document.createElement("span");
-    setStatusBadge(badge, c.status || "pending");
-    card.appendChild(badge);
+    setStatusBadge(badge, bookingStatus(c));
+    head.append(avatar, title, badge);
+    card.appendChild(head);
 
-    card.appendChild(patientBlock(c, () => showPatientDetail(c.id)));
-    const meta = document.createElement("div");
-    meta.className = "tp-case-meta";
-    meta.textContent = timeLine(c, "timestamp");
-    card.appendChild(meta);
-
-    addLine(card, "Date", c.date);
-    addLine(card, "Time slot", c.timeslot);
-    addLine(card, "Problem", c.notes || c.problem);
-    addLine(card, "Booked via", c.booked_via === "chatbot" ? "📱 Chatbot" : "🖥️ Dashboard");
+    const notes = c.notes || c.problem;
+    if (notes) {
+      const snippet = document.createElement("div");
+      snippet.className = "tp-case-notes-snippet";
+      snippet.textContent = notes;
+      card.appendChild(snippet);
+    }
 
     const actions = buildBookingActions(c, badge);
     const detailBtn = document.createElement("button");
     detailBtn.className = "tp-btn tp-btn-outline";
     detailBtn.textContent = "View Details";
     detailBtn.addEventListener("click", () => showPatientDetail(c.id));
-    actions.appendChild(detailBtn);
-
-    const histBtn = document.createElement("button");
-    histBtn.className = "tp-btn tp-btn-outline";
-    histBtn.textContent = "View Chat History";
-    histBtn.addEventListener("click", () => showChatHistory(c));
-    actions.appendChild(histBtn);
+    actions.prepend(detailBtn);
 
     card.appendChild(actions);
     container.appendChild(card);
   });
 }
+
+document.getElementById("booking-filters").addEventListener("click", (e) => {
+  const pill = e.target.closest(".tp-pill");
+  if (!pill) return;
+  bookingFilter = pill.dataset.filter;
+  document.querySelectorAll("#booking-filters .tp-pill").forEach(p => p.classList.toggle("active", p === pill));
+  renderBookings(document.getElementById("cases-bookings"), currentBookings);
+});
 
 // ── Patient detail (replaces the list in the same page; never shown side by side) ──
 function showPatientDetail(bookingId) {
@@ -640,14 +691,23 @@ function showPatientDetail(bookingId) {
   const body = document.getElementById("patient-detail-body");
   body.textContent = "";
 
-  const badge = document.createElement("span");
-  setStatusBadge(badge, c.status || "pending");
-  body.appendChild(badge);
-
+  const profile = document.createElement("div");
+  profile.className = "tp-detail-profile";
+  const avatar = document.createElement("div");
+  avatar.className = "tp-avatar tp-avatar-lg";
+  avatar.textContent = initials(c.patient_name);
+  const who = document.createElement("div");
   const name = document.createElement("h3");
   name.textContent = c.patient_name || "Anonymous";
-  body.appendChild(name);
-  addLine(body, "Email", c.patient_email || "No email");
+  who.appendChild(name);
+  addLine(who, "Email", c.patient_email || "No email");
+  if (c.patient_phone) addLine(who, "Phone", c.patient_phone);
+  const badge = document.createElement("span");
+  setStatusBadge(badge, bookingStatus(c));
+  profile.append(avatar, who, badge);
+  profile.lastChild.style.marginLeft = "auto";
+  body.appendChild(profile);
+
   addLine(body, "Date", c.date);
   addLine(body, "Time slot", c.timeslot);
   addLine(body, "Session notes", c.notes || c.problem || "None");
@@ -659,6 +719,29 @@ function showPatientDetail(bookingId) {
   histBtn.addEventListener("click", () => showChatHistory(c));
   actions.appendChild(histBtn);
   body.appendChild(actions);
+
+  // Therapist's own case notes, saved on the booking
+  const notesBox = document.createElement("div");
+  notesBox.className = "tp-case-notes";
+  const heading = document.createElement("h4");
+  heading.textContent = "Case Notes";
+  const area = document.createElement("textarea");
+  area.placeholder = "Add private case notes for this patient...";
+  area.value = c.case_notes || "";
+  const saveBtn = document.createElement("button");
+  saveBtn.className = "tp-btn tp-btn-primary";
+  saveBtn.textContent = "Save Notes";
+  saveBtn.addEventListener("click", async () => {
+    try {
+      await updateDoc(doc(db, "session_bookings", c.id), { case_notes: area.value, case_notes_updated_at: new Date() });
+      c.case_notes = area.value;
+      showToast("Case notes saved", "success");
+    } catch (e) {
+      showToast("Error: " + e.message, "error");
+    }
+  });
+  notesBox.append(heading, area, saveBtn);
+  body.appendChild(notesBox);
 
   document.getElementById("booking-list-panel").style.display = "none";
   document.getElementById("patient-detail-panel").style.display = "block";

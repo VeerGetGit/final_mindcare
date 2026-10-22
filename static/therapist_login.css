@@ -35,3 +35,7 @@
   margin-top: 16px;
   opacity: 0.8;
 }
+/* Dark navy theme */
+.therapist-login-container { border-top: 6px solid #3b82f6; }
+.therapist-badge { background: linear-gradient(135deg, #1e40af, #3b82f6); }
+.portal-subtitle, .admin-note { color: #94a3b8; }
